@@ -1361,6 +1361,128 @@ input,
 }
 
 /* =========================================================
+   OTP VERIFICATION
+========================================================= */
+
+#otpForm{
+    animation:otpFadeIn .4s ease;
+}
+
+@keyframes otpFadeIn{
+    from{
+        opacity:0;
+        transform:translateY(10px);
+    }
+    to{
+        opacity:1;
+        transform:translateY(0);
+    }
+}
+
+.otp-intro{
+    text-align:center;
+}
+
+.otp-icon{
+    display:block;
+    font-size:2rem;
+    margin-bottom:10px;
+    background:linear-gradient(135deg,#7c3aed,#8b5cf6,#b794f6);
+    -webkit-background-clip:text;
+    background-clip:text;
+    color:transparent;
+}
+
+.otp-intro p{
+    color:#6d6486;
+    font-size:.95rem;
+    line-height:1.6;
+}
+
+.otp-intro strong{
+    color:#2f2545;
+}
+
+.otp-box-group{
+    display:flex;
+    justify-content:center;
+    gap:10px;
+}
+
+.otp-box{
+    width:48px;
+    height:58px;
+    text-align:center;
+    border-radius:16px;
+    border:1px solid rgba(170,150,255,.25);
+    background:rgba(255,255,255,.60);
+    backdrop-filter:blur(10px);
+    color:#2f2545;
+    font-size:1.3rem;
+    font-weight:700;
+    transition:.30s ease;
+}
+
+.otp-box:hover{
+    border-color:#b69eff;
+    background:rgba(255,255,255,.75);
+}
+
+.otp-box:focus{
+    outline:none;
+    border-color:#9b87f5;
+    background:white;
+    transform:translateY(-2px);
+    box-shadow:0 0 0 5px rgba(155,135,245,.18);
+}
+
+.otp-box.otp-box-error{
+    border-color:#dc2626;
+    animation:otpShake .35s ease;
+}
+
+@keyframes otpShake{
+    0%,100%{ transform:translateX(0); }
+    25%{ transform:translateX(-5px); }
+    75%{ transform:translateX(5px); }
+}
+
+.otp-resend-row{
+    margin-top:-6px;
+    text-align:center;
+    font-size:.88rem;
+    color:#716889;
+}
+
+.otp-resend-row a{
+    color:#7c3aed;
+    font-weight:700;
+    text-decoration:none;
+    cursor:pointer;
+}
+
+.otp-resend-row a:hover{
+    text-decoration:underline;
+}
+
+#otpResendTimer{
+    color:#8f88a9;
+    font-weight:500;
+}
+
+@media (max-width:520px){
+    .otp-box{
+        width:40px;
+        height:52px;
+        font-size:1.1rem;
+        border-radius:12px;
+    }
+    .otp-box-group{
+        gap:7px;
+    }
+}
+
+/* =========================================================
    FINAL POLISH
 ========================================================= */
 

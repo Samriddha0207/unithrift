@@ -197,6 +197,35 @@ async function loadProfileData(accountData) {
 // ======================================
 // VERIFICATION SUMMARY
 // ======================================
+function renderDocCard(label, url, type) {
+    if (!url) return "";
+    const isPdf  = /\.pdf($|\?)/i.test(url);
+    const thumb  = isPdf
+        ? `<div style="width:44px;height:44px;border-radius:8px;background:rgba(124,92,255,0.12);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+               <i class="fas fa-file-pdf" style="color:var(--muted,#999);font-size:1.1rem;"></i>
+           </div>`
+        : `<img src="${url}" alt="${label}" style="width:44px;height:44px;border-radius:8px;object-fit:cover;flex-shrink:0;">`;
+
+    return `
+        <div class="ver-doc-card" data-doctype="${type}"
+             style="display:flex;align-items:center;gap:12px;padding:10px;border:1px solid rgba(255,255,255,0.08);border-radius:10px;">
+            <a href="${url}" target="_blank" rel="noopener" style="flex-shrink:0;line-height:0;">${thumb}</a>
+            <div style="flex:1;min-width:0;">
+                <p style="margin:0;font-size:0.85rem;font-weight:600;">${label}</p>
+                <a href="${url}" target="_blank" rel="noopener" style="font-size:0.75rem;color:var(--muted,#999);text-decoration:none;">View document</a>
+            </div>
+            <button type="button" class="doc-replace-btn" data-doctype="${type}" title="Replace"
+                    style="background:none;border:none;cursor:pointer;color:inherit;opacity:0.75;padding:6px;">
+                <i class="fas fa-rotate"></i>
+            </button>
+            <button type="button" class="doc-delete-btn" data-doctype="${type}" title="Delete"
+                    style="background:none;border:none;cursor:pointer;color:#ff6b6b;opacity:0.85;padding:6px;">
+                <i class="fas fa-trash"></i>
+            </button>
+        </div>
+    `;
+}
+
 function renderVerificationSummary(profile) {
     if (!verificationSummary) return;
 
@@ -207,7 +236,7 @@ function renderVerificationSummary(profile) {
     const sellerIcon   = sellerVerified   ? "fa-check-circle" : "fa-circle-xmark";
     const studentColor = studentVerified  ? "var(--success)"  : "var(--warning)";
     const sellerColor  = sellerVerified   ? "var(--success)"  : "var(--muted)";
-    const studentText  = studentVerified  ? "Verified"        : "Pending review";
+    const studentText  = studentVerified  ? "Verified"        : (profile.college_id_url ? "Pending review" : "Not submitted");
     const sellerText   = sellerVerified   ? "Verified"        : "Not submitted";
 
     if (studentStatus) {
@@ -218,6 +247,12 @@ function renderVerificationSummary(profile) {
         sellerStatus.textContent = sellerVerified ? "Verified" : "Not submitted";
         sellerStatus.className   = "badge-status" + (sellerVerified ? "" : " badge-pending");
     }
+
+    const docCards = [
+        renderDocCard("College ID", profile.college_id_url, "student"),
+        renderDocCard("PAN Card",   profile.pan_url,        "pan"),
+        renderDocCard("Payment QR", profile.payment_qr_url, "qr")
+    ].join("");
 
     verificationSummary.innerHTML = `
         <div class="ver-item">
@@ -234,6 +269,7 @@ function renderVerificationSummary(profile) {
                 <p>${sellerText}</p>
             </div>
         </div>
+        ${docCards ? `<div style="margin-top:14px;display:flex;flex-direction:column;gap:10px;">${docCards}</div>` : ""}
     `;
 
     if (sellerAccessBox) {
@@ -245,6 +281,60 @@ function renderVerificationSummary(profile) {
                </div>`
             : "";
     }
+}
+
+// ---- Replace / Delete document actions (event delegation) ----
+const REPLACE_TARGET = {
+    student: { input: "collegeId", section: "studentVerSection" },
+    pan:     { input: "panCard",   section: "sellerVerSection" },
+    qr:      { input: "paymentQr", section: "sellerVerSection" }
+};
+
+if (verificationSummary) {
+    verificationSummary.addEventListener("click", async (e) => {
+        const replaceBtn = e.target.closest(".doc-replace-btn");
+        const deleteBtn  = e.target.closest(".doc-delete-btn");
+
+        if (replaceBtn) {
+            const type = replaceBtn.dataset.doctype;
+            const target = REPLACE_TARGET[type];
+            if (!target) return;
+            document.getElementById(target.section)?.scrollIntoView({ behavior: "smooth", block: "center" });
+            document.getElementById(target.input)?.click();
+            return;
+        }
+
+        if (deleteBtn) {
+            const type = deleteBtn.dataset.doctype;
+            const labels = { student: "College ID", pan: "PAN Card", qr: "Payment QR" };
+            if (!confirm(`Delete your ${labels[type] || "document"}? You'll need to re-upload it for verification.`)) return;
+
+            const token = localStorage.getItem("unithrift_session_token");
+            if (!token) return;
+
+            deleteBtn.disabled = true;
+            deleteBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+
+            try {
+                const res = await fetch(`/api/profile/verify/${type}`, {
+                    method: "DELETE",
+                    headers: { "Authorization": `Bearer ${token}` }
+                });
+                const result = await res.json().catch(() => ({ success: false }));
+                if (result.success) {
+                    initializeProfile();
+                } else {
+                    alert(result.message || "Failed to delete document.");
+                    deleteBtn.disabled = false;
+                    deleteBtn.innerHTML = '<i class="fas fa-trash"></i>';
+                }
+            } catch (err) {
+                console.error("Delete document failed:", err);
+                deleteBtn.disabled = false;
+                deleteBtn.innerHTML = '<i class="fas fa-trash"></i>';
+            }
+        }
+    });
 }
 
 // ======================================
@@ -493,3 +583,128 @@ function renderListingCard(item) {
             </div>
         </div>`;
 }
+
+// ======================================
+// GEOAPIFY LOCATION AUTOCOMPLETE (navbar search)
+// ======================================
+(function setupLocationAutocomplete() {
+    const locationInput = document.getElementById("campusSearchInput");
+    if (!locationInput) return;
+
+    // Wrapper + dropdown, injected right after the input
+    locationInput.parentElement.style.position = "relative";
+    const dropdown = document.createElement("div");
+    dropdown.className = "geo-autocomplete-dropdown";
+    Object.assign(dropdown.style, {
+        position: "absolute", top: "100%", left: "0", right: "0",
+        background: "#161826", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "8px",
+        marginTop: "6px", maxHeight: "220px", overflowY: "auto",
+        boxShadow: "0 10px 24px rgba(0,0,0,0.4)", zIndex: "999", display: "none"
+    });
+    locationInput.parentElement.appendChild(dropdown);
+
+    let debounceTimer = null;
+    let currentResults = [];
+    let selectedIndex = -1;
+
+    function highlight(index) {
+        dropdown.querySelectorAll(".geo-suggestion").forEach(el => {
+            el.style.background = Number(el.dataset.index) === index ? "rgba(255,255,255,0.1)" : "transparent";
+        });
+    }
+
+    function applySelection(result) {
+        if (!result) return;
+        locationInput.value = result.formatted;
+
+        const locationField = document.getElementById("location");
+        const addressField  = document.getElementById("address");
+        const collegeField  = document.getElementById("college");
+
+        if (locationField) locationField.value = result.formatted;
+        if (addressField && !addressField.value.trim()) addressField.value = result.formatted;
+        if (collegeField && result.city && !collegeField.value.trim()) collegeField.value = result.city;
+
+        // brief visual confirmation on Profile Details
+        [locationField, addressField].forEach(el => {
+            if (!el) return;
+            el.style.transition = "background-color 0.3s";
+            el.style.backgroundColor = "rgba(124, 92, 255, 0.15)";
+            setTimeout(() => { el.style.backgroundColor = ""; }, 900);
+        });
+
+        dropdown.style.display = "none";
+        selectedIndex = -1;
+    }
+
+    locationInput.addEventListener("input", () => {
+        const query = locationInput.value.trim();
+        clearTimeout(debounceTimer);
+
+        if (query.length < 3) {
+            dropdown.style.display = "none";
+            return;
+        }
+
+        debounceTimer = setTimeout(async () => {
+            try {
+                const resp = await fetch(`/api/geoapify/autocomplete?text=${encodeURIComponent(query)}`);
+                const data = await resp.json();
+                if (!data.success) return;
+
+                currentResults = data.results || [];
+                selectedIndex = -1;
+                if (currentResults.length === 0) {
+                    dropdown.style.display = "none";
+                    return;
+                }
+
+                dropdown.innerHTML = currentResults.map((r, i) => `
+                    <div class="geo-suggestion" data-index="${i}"
+                         style="padding:10px 14px; cursor:pointer; font-size:0.9rem; color:#e4e4ec;">
+                        <i class="fas fa-location-dot" style="margin-right:8px; opacity:0.6;"></i>${r.formatted}
+                    </div>
+                `).join("");
+                dropdown.style.display = "block";
+                dropdown.querySelectorAll(".geo-suggestion").forEach(el => {
+                    el.addEventListener("mouseenter", () => el.style.background = "rgba(255,255,255,0.06)");
+                    el.addEventListener("mouseleave", () => el.style.background = "transparent");
+                });
+            } catch (err) {
+                console.error("Location autocomplete failed:", err);
+            }
+        }, 300); // debounce
+    });
+
+    locationInput.addEventListener("keydown", (e) => {
+        if (dropdown.style.display === "none" || currentResults.length === 0) return;
+
+        if (e.key === "ArrowDown") {
+            e.preventDefault();
+            selectedIndex = Math.min(selectedIndex + 1, currentResults.length - 1);
+            highlight(selectedIndex);
+        } else if (e.key === "ArrowUp") {
+            e.preventDefault();
+            selectedIndex = Math.max(selectedIndex - 1, 0);
+            highlight(selectedIndex);
+        } else if (e.key === "Enter") {
+            e.preventDefault();
+            const chosen = currentResults[selectedIndex >= 0 ? selectedIndex : 0];
+            applySelection(chosen);
+        } else if (e.key === "Escape") {
+            dropdown.style.display = "none";
+        }
+    });
+
+    dropdown.addEventListener("click", (e) => {
+        const item = e.target.closest(".geo-suggestion");
+        if (!item) return;
+        applySelection(currentResults[Number(item.dataset.index)]);
+    });
+
+    document.addEventListener("click", (e) => {
+        if (e.target !== locationInput && !dropdown.contains(e.target)) {
+            dropdown.style.display = "none";
+        }
+    });
+})();

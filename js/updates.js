@@ -50,12 +50,21 @@
             const newNotifCard = document.createElement('div');
             newNotifCard.className = "notif-card unread";
             newNotifCard.style.cssText = "animation: fadeIn 0.3s ease; border-left: 3px solid var(--accent);";
-            
+
+            // msg/senderName come from another user's chat message via a broadcast
+            // payload, so they must be escaped before going into innerHTML — otherwise
+            // a chat message like "<img src=x onerror=...>" runs in the recipient's page.
+            const escape = (s) => {
+                const div = document.createElement('div');
+                div.textContent = String(s ?? '');
+                return div.innerHTML;
+            };
+
             // Generate unique random or temporary id referencing chat rooms if desired
             newNotifCard.innerHTML = `
                 <div class="notif-icon message"><i class="fas fa-comment"></i></div>
                 <div class="notif-body">
-                    <p><strong>${senderName}:</strong> "${msg}"</p>
+                    <p><strong>${escape(senderName)}:</strong> "${escape(msg)}"</p>
                     <span class="notif-time">just now</span>
                 </div>
                 <div class="notif-unread-dot"></div>

@@ -5,8 +5,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>UniThrift | Product Details</title>
+
     <link rel="stylesheet" href="/css/product.css">
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap"
+        rel="stylesheet">
 </head>
 
 <body>
@@ -15,6 +18,7 @@
         <div class="logo">
             UniThrift
         </div>
+
         <div class="nav-links">
             <a href="/marketplace">Marketplace</a>
             <a href="/sell">Sell Item</a>
@@ -23,113 +27,265 @@
     </nav>
 
     <main class="product-container">
+
+        <!-- LEFT : IMAGES -->
         <section class="gallery-section">
-            <img id="mainImage" class="main-image" src="" alt="Product Image">
-            <div id="thumbnailContainer" class="thumbnail-container"></div>
+            <img id="mainImage"
+                 class="main-image"
+                 src=""
+                 alt="Product Image">
+
+            <div id="thumbnailContainer"
+                 class="thumbnail-container"></div>
         </section>
 
+        <!-- RIGHT : PRODUCT DETAILS -->
         <section class="details-section">
+
             <h1 id="productTitle">Loading...</h1>
-            <div id="productPrice" class="price"></div>
-            <div id="productCondition" class="condition"></div>
+
+            <div id="productPrice"
+                 class="price"></div>
+
+            <div id="productCondition"
+                 class="condition"></div>
 
             <div class="info-card">
+
                 <h3>Product Details</h3>
+
                 <p>
                     <strong>Delivery:</strong>
                     <span id="deliveryDate"></span>
                 </p>
+
                 <p>
                     <strong>Warranty:</strong>
                     <span id="warranty"></span>
                 </p>
+
                 <p>
                     <strong>Payment:</strong>
                     <span id="paymentMethods"></span>
                 </p>
+
             </div>
 
             <div class="action-buttons">
-                <button id="addCartBtn">Add To Cart</button>
-                <button id="chatWithSellerBtn" class="chat-seller-trigger">💬 Chat with Seller</button>
-                <button id="contactSellerBtn">Contact Seller</button>
+
+                <button id="addCartBtn">
+                    Add To Cart
+                </button>
+
+                <button id="chatWithSellerBtn"
+                        class="chat-seller-trigger">
+                    💬 Chat with Seller
+                </button>
+
+                <button id="contactSellerBtn">
+                    Contact Seller
+                </button>
+
             </div>
+
         </section>
+
     </main>
 
+    <!-- DESCRIPTION -->
+
     <section class="description-section">
+
         <h2>Description</h2>
+
         <div id="productDescription"></div>
+
     </section>
+
+    <!-- SELLER -->
 
     <section class="seller-section">
+
         <h2>Seller Information</h2>
+
         <div id="sellerInfo"></div>
+
     </section>
 
-    <section class="verification-section">
-        <h2>AI Product Verification</h2>
-        <div id="verificationInfo">
-            <p>Verification data will be loaded here.</p>
+    <!-- AI INSIGHTS -->
+
+    <section class="ai-insights-section">
+
+        <h2>🤖 AI Product Insights</h2>
+
+        <div id="aiInsights"
+             class="ai-card loading">
+
+            <div class="ai-loading">
+
+                <div class="spinner"></div>
+
+                <h3>Generating AI Summary...</h3>
+
+                <p>
+                    UniThrift AI is analysing this product, its description,
+                    pricing and customer reviews.
+                </p>
+
+            </div>
+
         </div>
+
     </section>
+
+    <!-- REVIEWS -->
 
     <section class="reviews-section">
+
         <h2>Reviews</h2>
+
         <div id="reviewsContainer"></div>
+
     </section>
 
+    <!-- REVIEW FORM -->
+
     <section class="review-form-section">
+
         <h2>Leave a Review</h2>
+
         <form id="reviewForm">
+
             <label>Rating</label>
-            <select id="rating" required>
-                <option value="">Select Rating</option>
-                <option value="1">1 Star</option>
-                <option value="2">2 Stars</option>
-                <option value="3">3 Stars</option>
-                <option value="4">4 Stars</option>
-                <option value="5">5 Stars</option>
+
+            <select id="rating"
+                    required>
+
+                <option value="">
+                    Select Rating
+                </option>
+
+                <option value="1">
+                    1 Star
+                </option>
+
+                <option value="2">
+                    2 Stars
+                </option>
+
+                <option value="3">
+                    3 Stars
+                </option>
+
+                <option value="4">
+                    4 Stars
+                </option>
+
+                <option value="5">
+                    5 Stars
+                </option>
+
             </select>
 
             <label>Review</label>
-            <textarea id="reviewText" rows="5" placeholder="Write your review..." required></textarea>
-            <button type="submit">Submit Review</button>
+
+            <textarea id="reviewText"
+                      rows="5"
+                      placeholder="Write your review..."
+                      required></textarea>
+
+            <button type="submit">
+                Submit Review
+            </button>
+
         </form>
+
     </section>
 
-    <div id="contactModal" class="modal-overlay">
+    <!-- CONTACT MODAL -->
+
+    <div id="contactModal"
+         class="modal-overlay">
+
         <div class="modal-content">
-            <span class="modal-close" id="closeModal">&times;</span>
+
+            <span id="closeModal"
+                  class="modal-close">
+                &times;
+            </span>
+
             <h2>Contact Seller</h2>
+
             <hr class="modal-divider">
+
             <div id="modalSellerDetails"></div>
+
         </div>
+
     </div>
 
-    <div id="chatPopup" class="chat-popup">
+    <!-- CHAT POPUP -->
+
+    <div id="chatPopup"
+         class="chat-popup">
+
         <div class="chat-header">
+
             <div class="chat-seller-meta">
+
                 <span class="online-indicator"></span>
-                <span id="chatSellerName">Seller Chat</span>
+
+                <span id="chatSellerName">
+                    Seller Chat
+                </span>
+
             </div>
-            <button id="closeChatBtn" class="close-chat-btn">&times;</button>
+
+            <button id="closeChatBtn"
+                    class="close-chat-btn">
+                &times;
+            </button>
+
         </div>
-        <div id="chatMessages" class="chat-messages">
-            <div class="message system-msg">Welcome to campus chat! Protect your data.</div>
+
+        <div id="chatMessages"
+             class="chat-messages">
+
+            <div class="message system-msg">
+                Welcome to campus chat! Protect your data.
+            </div>
+
         </div>
-        <form id="chatForm" class="chat-input-area">
-            <input type="text" id="chatInput" placeholder="Type a message..." required autocomplete="off">
-            <button type="submit" id="sendChatBtn">Send</button>
+
+        <form id="chatForm"
+              class="chat-input-area">
+
+            <input type="text"
+                   id="chatInput"
+                   placeholder="Type a message..."
+                   autocomplete="off"
+                   required>
+
+            <button id="sendChatBtn"
+                    type="submit">
+                Send
+            </button>
+
         </form>
+
     </div>
 
     <footer>
-        <p>© 2026 UniThrift. All Rights Reserved.</p>
+
+        <p>
+            © 2026 UniThrift. All Rights Reserved.
+        </p>
+
     </footer>
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
     <script src="/js/product.js"></script>
+
 </body>
 
 </html>

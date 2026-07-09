@@ -20,7 +20,9 @@ body{
     color:var(--text);
 }
 
-/* NAVBAR */
+/* ======================================
+   NAVBAR
+   ====================================== */
 
 .navbar{
     display:flex;
@@ -29,12 +31,16 @@ body{
     padding:20px 50px;
     background:#111;
     border-bottom:1px solid var(--border);
+    position:sticky;
+    top:0;
+    z-index:100;
 }
 
 .logo{
     font-size:2rem;
     font-weight:800;
     color:var(--accent);
+    letter-spacing:.5px;
 }
 
 .nav-links{
@@ -46,22 +52,28 @@ body{
     color:white;
     text-decoration:none;
     font-weight:500;
+    transition:.25s ease;
 }
 
 .nav-links a:hover{
     color:var(--accent);
 }
 
-/* PRODUCT */
+/* ======================================
+   PRODUCT LAYOUT
+   ====================================== */
 
 .product-container{
     display:grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns:1fr 1fr;
     gap:50px;
     padding:50px;
+    align-items:start;
 }
 
-/* GALLERY */
+/* ======================================
+   GALLERY
+   ====================================== */
 
 .gallery-section{
     display:flex;
@@ -74,12 +86,15 @@ body{
     object-fit:cover;
     border-radius:20px;
     border:1px solid var(--border);
+    transition:.3s ease;
+    background:#111;
 }
 
 .thumbnail-container{
     display:flex;
     gap:15px;
     margin-top:20px;
+    flex-wrap:wrap;
 }
 
 .thumbnail-container img{
@@ -89,17 +104,26 @@ body{
     border-radius:10px;
     cursor:pointer;
     border:2px solid transparent;
+    transition:.25s ease;
 }
 
 .thumbnail-container img:hover{
     border-color:var(--accent);
+    transform:scale(1.05);
 }
 
-/* DETAILS */
+.thumbnail-container img:active{
+    transform:scale(.97);
+}
+
+/* ======================================
+   PRODUCT DETAILS
+   ====================================== */
 
 .details-section h1{
     font-size:2.5rem;
     margin-bottom:15px;
+    line-height:1.25;
 }
 
 .price{
@@ -109,20 +133,15 @@ body{
     margin-bottom:15px;
 }
 
-.on-demand-tag{
-    display:inline-block;
-    padding:10px 15px;
-    border-radius:30px;
-    background:#1f2937;
-    margin-bottom:25px;
-}
-
+.on-demand-tag,
 .condition{
     display:inline-block;
     padding:10px 15px;
     border-radius:30px;
     background:#1f2937;
     margin-bottom:25px;
+    font-size:.95rem;
+    font-weight:500;
 }
 
 .info-card{
@@ -130,6 +149,12 @@ body{
     padding:25px;
     border-radius:20px;
     margin-bottom:25px;
+    border:1px solid var(--border);
+    transition:.25s ease;
+}
+
+.info-card:hover{
+    background:var(--card-hover);
 }
 
 .info-card h3{
@@ -138,47 +163,71 @@ body{
 
 .info-card p{
     margin-bottom:10px;
+    color:var(--secondary);
+    line-height:1.6;
+}
+
+.info-card strong{
+    color:white;
 }
 
 /* ======================================
-   ACTION BUTTONS & CHAT TRIGGER
+   ACTION BUTTONS
    ====================================== */
 
-.action-buttons {
-    display: flex;
-    gap: 15px;
-    align-items: center;
-    width: 100%;
-    margin-top: 20px;
+.action-buttons{
+    display:flex;
+    gap:15px;
+    align-items:center;
+    width:100%;
+    margin-top:20px;
 }
 
-.action-buttons button {
-    flex: 1;
-    border: none;
-    padding: 15px;
-    border-radius: 12px;
-    cursor: pointer;
-    font-weight: 600;
-    font-size: 1rem;
-    transition: 0.3s;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 10px;
-    background: var(--accent);
-    color: white;
+.action-buttons button{
+    flex:1;
+    border:none;
+    padding:15px;
+    border-radius:12px;
+    cursor:pointer;
+    font-weight:600;
+    font-size:1rem;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:10px;
+    background:var(--accent);
+    color:white;
+    transition:
+        transform .2s,
+        opacity .2s,
+        background .2s,
+        box-shadow .2s;
 }
 
-.chat-seller-trigger {
-    border: 2px solid var(--accent);
+.chat-seller-trigger{
+    border:2px solid var(--accent);
 }
 
-.action-buttons button:hover {
-    transform: translateY(-2px);
-    opacity: 0.9;
+.action-buttons button:hover{
+    transform:translateY(-2px);
+    opacity:.95;
+    box-shadow:0 10px 24px rgba(59,130,246,.25);
 }
 
-/* DESCRIPTION */
+.action-buttons button:active{
+    transform:translateY(0);
+}
+
+.action-buttons button:disabled{
+    opacity:.5;
+    cursor:not-allowed;
+    transform:none;
+    box-shadow:none;
+}
+
+/* ======================================
+   DESCRIPTION
+   ====================================== */
 
 .description-section{
     padding:0 50px 50px;
@@ -193,8 +242,9 @@ body{
     padding:25px;
     border-radius:20px;
     line-height:1.8;
+    border:1px solid var(--border);
+    color:var(--secondary);
 }
-
 /* ======================================
    CHAT POPUP WIDGET STYLES
    ====================================== */
@@ -346,20 +396,343 @@ body{
     border-radius:20px;
 }
 
-/* AI VERIFICATION */
+/* ======================================
+   CHAT POPUP
+   ====================================== */
 
-.verification-section{
+.chat-popup{
+    display:none;
+    position:fixed;
+    bottom:25px;
+    right:25px;
+    width:360px;
+    height:460px;
+    background:#fff;
+    border-radius:18px;
+    box-shadow:0 18px 45px rgba(0,0,0,.25);
+    flex-direction:column;
+    overflow:hidden;
+    z-index:1000;
+    border:1px solid #e5e7eb;
+    animation:fadeIn .25s ease;
+}
+
+.chat-header{
+    background:#111827;
+    color:#fff;
+    padding:14px 16px;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+}
+
+.chat-seller-meta{
+    display:flex;
+    align-items:center;
+    gap:10px;
+}
+
+.online-indicator{
+    width:10px;
+    height:10px;
+    background:#10b981;
+    border-radius:50%;
+    box-shadow:0 0 10px rgba(16,185,129,.8);
+}
+
+#chatSellerName{
+    font-size:.95rem;
+    font-weight:600;
+}
+
+.close-chat-btn{
+    background:none;
+    border:none;
+    color:#9ca3af;
+    font-size:1.6rem;
+    cursor:pointer;
+    transition:.2s ease;
+    line-height:1;
+}
+
+.close-chat-btn:hover{
+    color:#fff;
+    transform:rotate(90deg);
+}
+
+.chat-messages{
+    flex:1;
+    padding:16px;
+    overflow-y:auto;
+    background:#f9fafb;
+    display:flex;
+    flex-direction:column;
+    gap:12px;
+}
+
+.chat-messages::-webkit-scrollbar{
+    width:6px;
+}
+
+.chat-messages::-webkit-scrollbar-thumb{
+    background:#cbd5e1;
+    border-radius:20px;
+}
+
+.message{
+    max-width:75%;
+    padding:10px 14px;
+    border-radius:14px;
+    font-size:.88rem;
+    line-height:1.45;
+    word-break:break-word;
+}
+
+.message.sent{
+    background:#2563eb;
+    color:#fff;
+    align-self:flex-end;
+    border-bottom-right-radius:3px;
+}
+
+.message.received{
+    background:#e5e7eb;
+    color:#1f2937;
+    align-self:flex-start;
+    border-bottom-left-radius:3px;
+}
+
+.message.system-msg{
+    background:none;
+    color:#6b7280;
+    font-size:.75rem;
+    align-self:center;
+    max-width:100%;
+    text-align:center;
+}
+
+.chat-input-area{
+    display:flex;
+    gap:8px;
+    padding:12px;
+    background:#fff;
+    border-top:1px solid #e5e7eb;
+}
+
+#chatInput{
+    flex:1;
+    border:1px solid #d1d5db;
+    border-radius:10px;
+    padding:10px 14px;
+    outline:none;
+    font-size:.88rem;
+    transition:.2s ease;
+}
+
+#chatInput:focus{
+    border-color:var(--accent);
+    box-shadow:0 0 0 3px rgba(59,130,246,.15);
+}
+
+#chatForm button{
+    background:var(--accent);
+    color:#fff;
+    border:none;
+    border-radius:10px;
+    padding:0 18px;
+    cursor:pointer;
+    font-weight:600;
+    transition:.2s ease;
+}
+
+#chatForm button:hover{
+    background:#2563eb;
+}
+
+/* ======================================
+   SELLER
+   ====================================== */
+
+.seller-section{
     padding:0 50px 50px;
 }
 
-#verificationInfo{
+#sellerInfo{
     background:var(--card);
-    padding:25px;
+    border:1px solid var(--border);
     border-radius:20px;
-    border-left:5px solid #10b981;
+    padding:25px;
+    transition:.25s ease;
 }
 
-/* REVIEWS */
+#sellerInfo:hover{
+    background:var(--card-hover);
+}
+
+#sellerInfo h3{
+    margin-bottom:16px;
+    color:#fff;
+}
+
+#sellerInfo p{
+    color:var(--secondary);
+    margin-bottom:10px;
+    line-height:1.6;
+}
+
+/* ======================================
+   AI PRODUCT INSIGHTS
+   ====================================== */
+
+.ai-insights-section{
+    padding:0 50px 50px;
+}
+
+.ai-card,
+.ai-summary-card{
+    background:var(--card);
+    border:1px solid var(--border);
+    border-radius:20px;
+    padding:25px;
+    transition:.25s ease;
+}
+
+.ai-card:hover,
+.ai-summary-card:hover{
+    background:var(--card-hover);
+}
+
+.ai-loading{
+    text-align:center;
+    padding:25px 10px;
+}
+
+.spinner{
+    width:42px;
+    height:42px;
+    margin:0 auto 18px;
+    border:4px solid rgba(255,255,255,.15);
+    border-top:4px solid var(--accent);
+    border-radius:50%;
+    animation:spin .8s linear infinite;
+}
+
+.ai-loading h3{
+    margin-bottom:10px;
+}
+
+.ai-loading p{
+    color:var(--secondary);
+    line-height:1.7;
+}
+
+.ai-recommendation{
+    display:inline-block;
+    padding:8px 18px;
+    border-radius:999px;
+    font-weight:700;
+    margin-bottom:24px;
+    color:#fff;
+}
+
+.ai-section{
+    margin-bottom:26px;
+}
+
+.ai-section:last-child{
+    margin-bottom:0;
+}
+
+.ai-section h3{
+    margin-bottom:12px;
+    color:#fff;
+}
+
+.ai-section p{
+    color:var(--secondary);
+    line-height:1.8;
+}
+
+.ai-section ul{
+    margin-top:12px;
+    padding-left:22px;
+}
+
+.ai-section li{
+    color:var(--secondary);
+    margin-bottom:10px;
+    line-height:1.6;
+}
+
+.ai-footer{
+    margin-top:28px;
+    padding-top:18px;
+    border-top:1px solid var(--border);
+    color:#8b8b8b;
+    font-size:.82rem;
+}
+
+.ai-error{
+    text-align:center;
+    background:#2b1111;
+    border:1px solid #ef4444;
+    border-radius:18px;
+    padding:35px;
+}
+
+.ai-error h3{
+    color:#ef4444;
+    margin-bottom:12px;
+}
+
+.ai-error p{
+    color:#fca5a5;
+}
+
+.positive{
+    background:#10b981;
+}
+
+.neutral{
+    background:#f59e0b;
+}
+
+.caution{
+    background:#ef4444;
+}
+
+/* ======================================
+   ANIMATIONS
+   ====================================== */
+
+@keyframes spin{
+
+    from{
+        transform:rotate(0deg);
+    }
+
+    to{
+        transform:rotate(360deg);
+    }
+
+}
+
+@keyframes fadeIn{
+
+    from{
+        opacity:0;
+        transform:translateY(12px);
+    }
+
+    to{
+        opacity:1;
+        transform:translateY(0);
+    }
+
+}
+/* ======================================
+   REVIEWS
+   ====================================== */
 
 .reviews-section{
     padding:0 50px 50px;
@@ -368,16 +741,33 @@ body{
 #reviewsContainer{
     display:flex;
     flex-direction:column;
-    gap:15px;
+    gap:18px;
 }
 
 .review-card{
     background:var(--card);
-    padding:20px;
-    border-radius:15px;
+    border:1px solid var(--border);
+    border-radius:16px;
+    padding:22px;
+    transition:.25s ease;
 }
 
-/* REVIEW FORM */
+.review-card:hover{
+    background:var(--card-hover);
+}
+
+.review-card h4{
+    margin-bottom:10px;
+}
+
+.review-card p{
+    color:var(--secondary);
+    line-height:1.7;
+}
+
+/* ======================================
+   REVIEW FORM
+   ====================================== */
 
 .review-form-section{
     padding:0 50px 80px;
@@ -385,98 +775,142 @@ body{
 
 #reviewForm{
     background:var(--card);
-    padding:25px;
+    border:1px solid var(--border);
     border-radius:20px;
+    padding:25px;
     display:flex;
     flex-direction:column;
     gap:15px;
+}
+
+#reviewForm label{
+    font-weight:600;
 }
 
 #reviewForm select,
 #reviewForm textarea{
     background:#1f2937;
     border:1px solid var(--border);
-    color:white;
+    color:#fff;
     padding:12px;
     border-radius:10px;
+    outline:none;
+    transition:.2s ease;
+}
+
+#reviewForm select:focus,
+#reviewForm textarea:focus{
+    border-color:var(--accent);
+    box-shadow:0 0 0 3px rgba(59,130,246,.15);
+}
+
+#reviewForm textarea{
+    resize:vertical;
+    min-height:130px;
 }
 
 #reviewForm button{
     border:none;
-    padding:15px;
     border-radius:12px;
+    padding:15px;
     cursor:pointer;
     background:var(--accent);
-    color:white;
+    color:#fff;
     font-weight:600;
+    transition:.25s ease;
 }
 
-/* CONTACT SELLER MODAL CORNERSTONE SETUP */
-
-.modal-overlay {
-    display: none;
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(0, 0, 0, 0.85);
-    z-index: 1000;
-    justify-content: center;
-    align-items: center;
+#reviewForm button:hover{
+    transform:translateY(-2px);
+    box-shadow:0 10px 24px rgba(59,130,246,.25);
 }
 
-.modal-content {
-    background: #111111;
-    border: 1px solid var(--border);
-    padding: 30px;
-    border-radius: 20px;
-    width: 90%;
-    max-width: 450px;
-    position: relative;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
-    color: var(--text);
-    animation: fadeIn 0.25s ease-out;
+#reviewForm button:disabled{
+    opacity:.6;
+    cursor:not-allowed;
+    transform:none;
+    box-shadow:none;
 }
 
-.modal-close {
-    position: absolute;
-    top: 15px;
-    right: 20px;
-    font-size: 1.8rem;
-    color: var(--secondary);
-    cursor: pointer;
-    transition: 0.2s;
+/* ======================================
+   CONTACT MODAL
+   ====================================== */
+
+.modal-overlay{
+    display:none;
+    position:fixed;
+    inset:0;
+    background:rgba(0,0,0,.85);
+    z-index:1000;
+    justify-content:center;
+    align-items:center;
+    backdrop-filter:blur(4px);
 }
 
-.modal-close:hover {
-    color: var(--accent);
+.modal-content{
+    background:#111;
+    border:1px solid var(--border);
+    border-radius:20px;
+    padding:30px;
+    width:90%;
+    max-width:450px;
+    position:relative;
+    color:var(--text);
+    box-shadow:0 18px 40px rgba(0,0,0,.55);
+    animation:modalFade .25s ease;
 }
 
-.modal-divider {
-    border: 0;
-    height: 1px;
-    background: var(--border);
-    margin: 15px 0;
+.modal-close{
+    position:absolute;
+    top:15px;
+    right:20px;
+    font-size:1.8rem;
+    color:var(--secondary);
+    cursor:pointer;
+    transition:.2s ease;
 }
 
-.modal-item {
-    margin-bottom: 14px;
-    font-size: 1.05rem;
+.modal-close:hover{
+    color:var(--accent);
+    transform:rotate(90deg);
 }
 
-.modal-item strong {
-    color: var(--accent);
-    display: inline-block;
-    width: 140px;
+.modal-divider{
+    border:0;
+    height:1px;
+    background:var(--border);
+    margin:16px 0;
 }
 
-@keyframes fadeIn {
-    from { opacity: 0; transform: scale(0.95); }
-    to { opacity: 1; transform: scale(1); }
+.modal-item{
+    margin-bottom:14px;
+    font-size:1rem;
+    line-height:1.7;
 }
 
-/* FOOTER */
+.modal-item strong{
+    display:inline-block;
+    width:145px;
+    color:var(--accent);
+}
+
+@keyframes modalFade{
+
+    from{
+        opacity:0;
+        transform:scale(.95);
+    }
+
+    to{
+        opacity:1;
+        transform:scale(1);
+    }
+
+}
+
+/* ======================================
+   FOOTER
+   ====================================== */
 
 footer{
     text-align:center;
@@ -485,9 +919,12 @@ footer{
     color:var(--secondary);
 }
 
-/* MOBILE */
+/* ======================================
+   MOBILE
+   ====================================== */
 
 @media(max-width:900px){
+
     .product-container{
         grid-template-columns:1fr;
         padding:25px;
@@ -495,7 +932,7 @@ footer{
 
     .description-section,
     .seller-section,
-    .verification-section,
+    .ai-insights-section,
     .reviews-section,
     .review-form-section{
         padding:25px;
@@ -504,14 +941,37 @@ footer{
     .navbar{
         flex-direction:column;
         gap:15px;
+        padding:20px;
     }
 
     .nav-links{
         flex-wrap:wrap;
         justify-content:center;
+        gap:18px;
     }
 
     .action-buttons{
         flex-direction:column;
     }
+
+    .main-image{
+        height:350px;
+    }
+
+    .thumbnail-container{
+        justify-content:center;
+    }
+
+    .thumbnail-container img{
+        width:80px;
+        height:80px;
+    }
+
+    .chat-popup{
+        width:95%;
+        right:2.5%;
+        bottom:15px;
+        height:75vh;
+    }
+
 }

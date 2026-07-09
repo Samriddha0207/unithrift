@@ -646,8 +646,8 @@ body.dark-theme .promo-overlay-purple {
     padding: 14px;
     border: none;
     border-radius: 15px;
-    background: var(--card);
-    color: var(--text);
+    background: #e11d48; /* Vibrant, modern red */
+    color: #ffffff;      /* White text for high contrast */
     font-size: 0.93rem;
     font-weight: 600;
     cursor: pointer;
@@ -658,9 +658,20 @@ body.dark-theme .promo-overlay-purple {
     transition: background 0.2s, color 0.2s;
 }
 
-.logout-full-btn:hover { background: rgba(244,63,94,0.08); color: var(--danger); }
-.logout-full-btn i { color: var(--muted); transition: color 0.2s; }
-.logout-full-btn:hover i { color: var(--danger); }
+.logout-full-btn:hover { 
+    background: #be123c; /* Darker red on hover */
+    color: #ffffff;      /* Keeps text readable */
+}
+
+.logout-full-btn i { 
+    color: rgba(255, 255, 255, 0.8); /* Semi-transparent white icon */
+    transition: color 0.2s; 
+}
+
+.logout-full-btn:hover i { 
+    color: #ffffff; /* Full white icon on hover */
+}
+
 
 /* =========================================
    MY LISTINGS
@@ -982,4 +993,27 @@ body.dark-theme .listing-price-badge {
     .profile-main { margin: 18px auto; padding: 0 12px; }
     .footer-inner { grid-template-columns: 1fr; gap: 24px; }
     .form-row { grid-template-columns: 1fr; }
+}
+/* 1. Base style for your dashboard boxes */
+.dashboard-box {
+  background-color: #121214; /* Matches your dark background */
+  border-radius: 12px;
+  padding: 24px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  
+  /* CRITICAL: Smoothly animates the hover effects over 0.3 seconds */
+  transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
+}
+
+/* 2. The Hover State Effect */
+.dashboard-box:hover {
+  /* Lifts the card slightly upwards */
+  transform: translateY(-5px); 
+  
+  /* Brightens the border slightly */
+  border-color: rgba(138, 92, 246, 0.3); 
+  
+  /* Adds a smooth, soft purple glow underneath */
+  box-shadow: 0 10px 25px -5px rgba(138, 92, 246, 0.15), 
+              0 8px 10px -6px rgba(138, 92, 246, 0.15);
 }

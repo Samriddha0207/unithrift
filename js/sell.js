@@ -50,6 +50,16 @@ document.addEventListener("DOMContentLoaded", () => {
         const paymentMethods  = document.getElementById("paymentMethods").value.trim();
         const files           = imageInput.files;
 
+        // Extract the Turnstile token
+        const turnstileToken  = document.querySelector('#sellForm [name="cf-turnstile-response"]')?.value;
+
+        if (!turnstileToken) {
+            verificationStatus.innerHTML = "<span style='color: #f87171;'>❌ Please complete the security check.</span>";
+            submitBtn.disabled = false;
+            submitBtn.innerText = "List Product";
+            return;
+        }
+
         try {
             // 1. Upload images via base64 stream
             let image_urls = [];
@@ -89,7 +99,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 throw new Error("You must upload at least one product picture for AI validation checks.");
             }
 
-            // 2. Submit data to backend
+            // 2. Submit data to backend with Cloudflare Turnstile payload attached
             const res = await fetch('/api/listings/create', {
                 method: 'POST',
                 headers: {
@@ -106,7 +116,8 @@ document.addEventListener("DOMContentLoaded", () => {
                     contact_no: contactNo,
                     delivery_date: deliveryDate, 
                     payment_methods: paymentMethods, 
-                    image_urls 
+                    image_urls,
+                    'cf-turnstile-response': turnstileToken
                 })
             });
 
@@ -118,6 +129,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
         } catch (err) {
             console.error(err);
+            if (window.turnstile) turnstile.reset(); // Reset token on validation or network failure
             verificationStatus.innerHTML = "❌ Failed: " + err.message;
             alert("Error: " + err.message);
         } finally {

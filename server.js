@@ -2,12 +2,15 @@ require('dotenv').config();
 
 const express    = require('express');
 const path       = require('path');
+const fs         = require('fs');
 const multer     = require('multer');
 const helmet     = require('helmet');
 const cors       = require('cors');
 const rateLimit  = require('express-rate-limit');
 const { createClient } = require('@supabase/supabase-js');
 const { GoogleGenerativeAI } = require("@google/generative-ai"); //[cite: 1]
+const { generateOTP, hashOTP, verifyOTP, createExpiry, isExpired } = require('./services/otpService');
+const { sendVerificationOTP } = require('./services/emailservice');
 
 const app    = express();
 const PORT   = process.env.PORT || 3000;
@@ -15,10 +18,13 @@ const PORT   = process.env.PORT || 3000;
 // =========================================================================
 // 1. CONFIG — all secrets from .env
 // =========================================================================
-const SUPABASE_URL = process.env.SUPABASE_URL?.trim();
-const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY?.trim();
+const SUPABASE_URL      = process.env.SUPABASE_URL?.trim();
+const SUPABASE_KEY      = process.env.SUPABASE_SERVICE_KEY?.trim();
+const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY?.trim(); // safe to expose to the browser
 const JWT_SECRET   = process.env.SUPABASE_JWT_SECRET?.trim();
 const APP_URL      = process.env.APP_URL?.trim() || "http://localhost:3000";
+const GEOAPIFY_KEY = process.env.GEOAPIFY_API_KEY?.trim();
+const TURNSTILE_SECRET_KEY = process.env.TURNSTILE_SECRET_KEY?.trim();
 
 if (!SUPABASE_URL || !SUPABASE_KEY || !JWT_SECRET) {
     console.error("❌ Missing required environment variables. Check your .env file.");
@@ -32,7 +38,6 @@ const supabase = createClient(
     SUPABASE_URL,
     SUPABASE_KEY
 );
-
 // Initialize Gemini[cite: 1]
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY); //[cite: 1]
 const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" }); //[cite: 1]
@@ -122,12 +127,83 @@ Return ONLY JSON, no markdown: {"verified": boolean, "pan_number": "PAN or null"
     }
 }
 
+// ---- GEMINI: PRODUCT + REVIEW INSIGHTS ----
+async function generateProductInsights(product, reviews) {
+    try {
+        const reviewsText = (reviews && reviews.length > 0)
+            ? reviews.map(r => `- ${r.rating}/5: "${(r.review_text || '').slice(0, 300)}"`).join('\n')
+            : 'No reviews yet.';
+
+        const prompt = `You are an AI assistant for UniThrift, a campus marketplace in India. Analyze this product listing and its reviews.
+
+Product Title: ${product.title}
+Category: ${product.category}
+Condition: ${product.condition}
+Price: ₹${product.price}
+Description: ${product.description}
+
+Reviews:
+${reviewsText}
+
+Task:
+1. Give a short assessment of the product itself (is the description reasonable for the stated price/condition, anything a buyer should note).
+2. Analyze the reviews: overall sentiment, and any recurring praise or complaints. If there are no reviews, say so plainly.
+3. List 2-4 short, concrete key points a buyer should know before purchasing.
+4. Give a one-word recommendation: "Positive", "Neutral", or "Caution".
+
+Return ONLY JSON, no markdown, in this exact format:
+{"product_summary": "...", "review_summary": "...", "key_points": ["...", "..."], "recommendation": "Positive|Neutral|Caution"}`;
+
+        const result = await model.generateContent(prompt);
+        const text = result.response.text();
+        const match = text.match(/\{[\s\S]*\}/);
+        if (!match) throw new Error('No JSON from Gemini');
+        return JSON.parse(match[0]);
+    } catch (err) {
+        console.error('Gemini product insights error:', err.message);
+        return {
+            product_summary: 'AI analysis is temporarily unavailable for this product.',
+            review_summary: (reviews && reviews.length) ? `${reviews.length} review(s) on file.` : 'No reviews yet.',
+            key_points: [],
+            recommendation: 'Neutral',
+            ai_unavailable: true
+        };
+    }
+}
+
 // ---- INTERNAL: CREATE NOTIFICATION ----
 async function createNotification(userId, message, type = 'info', referenceId = null) {
     const { error } = await supabase.from('notifications').insert({
         user_id: userId, message, type, reference_id: referenceId, read: false
     });
     if (error) console.error('createNotification error:', error.message);
+}
+
+// ---- INTERNAL: VERIFY CLOUDFLARE TURNSTILE TOKEN ----
+async function verifyTurnstile(token, remoteIp) {
+    if (!TURNSTILE_SECRET_KEY) {
+        console.error('TURNSTILE_SECRET_KEY is not configured.');
+        return false;
+    }
+    if (!token || typeof token !== 'string') return false;
+
+    try {
+        const body = new URLSearchParams();
+        body.append('secret', TURNSTILE_SECRET_KEY);
+        body.append('response', token);
+        if (remoteIp) body.append('remoteip', remoteIp);
+
+        const verifyRes = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body
+        });
+        const result = await verifyRes.json();
+        return result.success === true;
+    } catch (err) {
+        console.error('Turnstile verification request failed:', err.message);
+        return false;
+    }
 }
 
 // =========================================================================
@@ -260,6 +336,22 @@ const signupLimiter = rateLimit({
     legacyHeaders: false
 });
 
+const otpVerifyLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 10,
+    message: { success: false, message: 'Too many verification attempts. Please wait 15 minutes.' },
+    standardHeaders: true,
+    legacyHeaders: false
+});
+
+const otpResendLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 3,
+    message: { success: false, message: 'Too many code requests. Please wait a few minutes before trying again.' },
+    standardHeaders: true,
+    legacyHeaders: false
+});
+
 const uploadLimiter = rateLimit({
     windowMs: 15 * 60 * 1000,
     max: 20,
@@ -288,14 +380,33 @@ app.get('/',            (req, res) => res.sendFile(path.join(__dirname, 'login.h
 app.get('/login.html',  (req, res) => res.sendFile(path.join(__dirname, 'login.html')));
 app.get('/homepage',    (req, res) => res.sendFile(path.join(__dirname, 'homepage.html')));
 app.get('/marketplace', (req, res) => res.sendFile(path.join(__dirname, 'marketplace.html')));
-app.get('/product',     (req, res) => res.sendFile(path.join(__dirname, 'product.html')));
+app.get('/product',     (req, res) => sendWithSupabaseConfig(res, 'product.html'));
+app.get('/product.html',(req, res) => sendWithSupabaseConfig(res, 'product.html'));
 app.get('/profile',     (req, res) => res.sendFile(path.join(__dirname, 'profile.html')));
 app.get('/sell',        (req, res) => res.sendFile(path.join(__dirname, 'sell.html')));
 app.get('/about',       (req, res) => res.sendFile(path.join(__dirname, 'about.html')));
 app.get('/terms',       (req, res) => res.sendFile(path.join(__dirname, 'terms.html')));
 app.get('/privacy',     (req, res) => res.sendFile(path.join(__dirname, 'privacy.html')));
 app.get('/help',        (req, res) => res.sendFile(path.join(__dirname, 'help.html')));
-app.get('/updates',     (req, res) => res.sendFile(path.join(__dirname, 'updates.html')));
+
+// Injects window.__SUPABASE_URL__ / window.__SUPABASE_ANON__ into a page so its
+// client-side realtime code (product.js, updates.js) can open a Supabase client.
+// Only the public anon key is ever sent here — never SUPABASE_KEY (service role).
+function sendWithSupabaseConfig(res, fileName) {
+    fs.readFile(path.join(__dirname, fileName), 'utf8', (err, html) => {
+        if (err) return res.status(500).send('Failed to load page');
+        const injected = html.replace(
+            '</head>',
+            `<script>
+                window.__SUPABASE_URL__ = ${JSON.stringify(SUPABASE_URL || '')};
+                window.__SUPABASE_ANON__ = ${JSON.stringify(SUPABASE_ANON_KEY || '')};
+            </script></head>`
+        );
+        res.send(injected);
+    });
+}
+
+app.get('/updates', (req, res) => sendWithSupabaseConfig(res, 'updates.html'));
 
 // =========================================================================
 // 7. API ROUTES
@@ -335,9 +446,14 @@ app.post('/api/auth/refresh', async (req, res) => {
 // ---- SIGNUP ----
 app.post('/api/signup', signupLimiter, async (req, res) => {
     let { username, email, password } = req.body;
+    const turnstileToken = req.body['cf-turnstile-response'];
 
     if (!username || !email || !password)
         return res.status(400).json({ success: false, message: 'All fields are required.' });
+
+    const humanVerified = await verifyTurnstile(turnstileToken, req.ip);
+    if (!humanVerified)
+        return res.status(400).json({ success: false, message: 'Bot verification failed. Please try again.' });
 
     username = sanitizeString(username, 30).toLowerCase();
     email    = sanitizeString(email, 254).toLowerCase();
@@ -351,24 +467,183 @@ app.post('/api/signup', signupLimiter, async (req, res) => {
         return res.status(400).json({ success: false, message: 'Password must be at least 6 characters.' });
 
     try {
-        const { error } = await supabase.auth.signUp({
+        const { data: signUpData, error } = await supabase.auth.signUp({
             email,
             password,
             options: { data: { username } }
         });
         if (error) throw error;
-        return res.status(201).json({ success: true, message: 'Registration successful! You can now log in.' });
+
+        const userId = signUpData?.user?.id;
+        
+     try {
+    console.log("========== SIGNUP OTP ==========");
+    console.log("User ID:", userId);
+    console.log("Email:", email);
+
+    await issueSignupOtp(email, userId, username);
+
+    console.log("OTP issued successfully.");
+} catch (emailErr) {
+    console.error("========== OTP ERROR ==========");
+    console.error(emailErr);
+    console.error("===============================");
+
+    return res.status(201).json({
+        success: true,
+        message: 'Account created, but we could not send the verification email. Please use "Resend code" on the verification page.',
+        email
+    });
+}
+
+        return res.status(201).json({
+            success: true,
+            message: 'Account created! Check your email for a 6-digit verification code.',
+            email
+        });
     } catch (error) {
         return res.status(400).json({ success: false, message: error.message });
+    }
+});
+
+// ---- INTERNAL: GENERATE, HASH, STORE, AND EMAIL A FRESH SIGNUP OTP ----
+// Replaces any previous pending code for this email so only one is ever valid.
+async function issueSignupOtp(email, userId, username) {
+    const otp = generateOTP();
+    const otpHash = hashOTP(otp);
+    const expiresAt = createExpiry(10);
+
+    console.log("Creating OTP:");
+    console.log({
+        userId,
+        email,
+        otpHash,
+        expiresAt
+    });
+
+    await supabase
+        .from("email_verifications")
+        .delete()
+        .eq("email", email);
+
+    const { error: otpError } = await supabase
+        .from("email_verifications")
+        .insert({
+            email,
+            user_id: userId,
+            otp_hash: otpHash,
+            expires_at: expiresAt,
+            attempts: 0
+        });
+
+    if (otpError) {
+        console.error("FULL INSERT ERROR:");
+        console.error(otpError);
+        throw otpError;
+    }
+
+    console.log("OTP saved to database.");
+
+    await sendVerificationOTP(email, otp);
+
+    console.log("OTP email sent.");
+}
+// ---- VERIFY SIGNUP OTP ----
+async function handleVerifyEmail(req, res) {
+    let { email, otp } = req.body;
+    if (!email || !otp)
+        return res.status(400).json({ success: false, message: 'Email and code are required.' });
+
+    email = sanitizeString(email, 254).toLowerCase();
+    otp   = sanitizeString(otp, 6);
+
+    try {
+        const { data: record, error } = await supabase
+            .from('email_verifications')
+            .select('*')
+            .eq('email', email)
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .maybeSingle();
+        if (error) throw error;
+
+        if (!record)
+            return res.status(400).json({ success: false, message: 'No pending verification found. Please sign up again or request a new code.' });
+
+        if (isExpired(record.expires_at)) {
+            await supabase.from('email_verifications').delete().eq('id', record.id);
+            return res.status(400).json({ success: false, message: 'This code has expired. Please request a new one.' });
+        }
+
+        if (record.attempts >= 5) {
+            await supabase.from('email_verifications').delete().eq('id', record.id);
+            return res.status(429).json({ success: false, message: 'Too many incorrect attempts. Please request a new code.' });
+        }
+
+        if (!verifyOTP(otp, record.otp_hash)) {
+            await supabase.from('email_verifications').update({ attempts: record.attempts + 1 }).eq('id', record.id);
+            return res.status(400).json({ success: false, message: 'Incorrect code. Please try again.' });
+        }
+
+        // Correct code — mark the Supabase auth user as email-confirmed
+        const { error: confirmError } = await supabase.auth.admin.updateUserById(record.user_id, {
+            email_confirm: true
+        });
+        if (confirmError) throw confirmError;
+
+        // Verification complete — delete the OTP record so it can never be reused
+        await supabase.from('email_verifications').delete().eq('id', record.id);
+
+        return res.json({ success: true, message: 'Email verified! You can now log in.' });
+    } catch (err) {
+        console.error('OTP verification error:', err.message);
+        return res.status(500).json({ success: false, message: 'Verification failed. Please try again.' });
+    }
+}
+app.post('/api/verify-email', otpVerifyLimiter, handleVerifyEmail);
+app.post('/api/verify-otp',   otpVerifyLimiter, handleVerifyEmail); // legacy alias
+
+// ---- RESEND SIGNUP OTP ----
+app.post('/api/resend-otp', otpResendLimiter, async (req, res) => {
+    let { email } = req.body;
+    if (!email)
+        return res.status(400).json({ success: false, message: 'Email is required.' });
+
+    email = sanitizeString(email, 254).toLowerCase();
+
+    try {
+        const { data: existing, error: findError } = await supabase
+            .from('email_verifications')
+            .select('*')
+            .eq('email', email)
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .maybeSingle();
+        if (findError) throw findError;
+
+        if (!existing)
+            return res.status(400).json({ success: false, message: 'No pending verification found for this email.' });
+
+        await issueSignupOtp(email, existing.user_id);
+
+        return res.json({ success: true, message: 'A new verification code has been sent to your email.' });
+    } catch (err) {
+        console.error('Resend OTP error:', err.message);
+        return res.status(500).json({ success: false, message: 'Could not resend code. Please try again in a few minutes.' });
     }
 });
 
 // ---- LOGIN ----
 app.post('/api/login', loginLimiter, async (req, res) => {
     let { loginIdentifier, password } = req.body;
+    const turnstileToken = req.body['cf-turnstile-response'];
 
     if (!loginIdentifier || !password)
         return res.status(400).json({ success: false, message: 'All fields are required.' });
+
+    const humanVerified = await verifyTurnstile(turnstileToken, req.ip);
+    if (!humanVerified)
+        return res.status(400).json({ success: false, message: 'Bot verification failed. Please try again.' });
 
     let targetEmail = sanitizeString(loginIdentifier, 254).toLowerCase();
     password        = sanitizeString(password, 128);
@@ -382,7 +657,34 @@ app.post('/api/login', loginLimiter, async (req, res) => {
             targetEmail = emailResult;
         }
         const { data, error } = await supabase.auth.signInWithPassword({ email: targetEmail, password });
-        if (error) throw error;
+
+        if (error) {
+            // Supabase itself refuses sign-in for unconfirmed addresses when
+            // "Confirm email" is enabled — surface that as a verification prompt.
+            if (/confirm/i.test(error.message || '')) {
+                return res.status(403).json({
+                    success: false,
+                    needs_verification: true,
+                    email: targetEmail,
+                    message: 'Please verify your email before logging in.'
+                });
+            }
+            throw error;
+        }
+
+        // Belt-and-suspenders check in case the project doesn't enforce it itself.
+        if (!data.user?.email_confirmed_at) {
+            if (data.session?.access_token) {
+                await supabase.auth.admin.signOut(data.session.access_token).catch(() => {});
+            }
+            return res.status(403).json({
+                success: false,
+                needs_verification: true,
+                email: targetEmail,
+                message: 'Please verify your email before logging in.'
+            });
+        }
+
         const token         = data.session?.access_token;
         const refresh_token = data.session?.refresh_token;
         if (!token) throw new Error('Login succeeded but no session token was returned.');
@@ -562,6 +864,43 @@ app.post('/api/profile/verify/seller', uploadLimiter, uploadDoc.fields([
     }
 });
 
+// ---- DELETE / RESET A VERIFICATION DOCUMENT ----
+app.delete('/api/profile/verify/:type', async (req, res) => {
+    try {
+        const user = await getUserFromToken(req);
+        const type = req.params.type; // 'student' | 'pan' | 'qr'
+
+        const fieldMap = {
+            student: { urlField: 'college_id_url', extra: { student_verified: false, ai_id_confidence: null } },
+            pan:     { urlField: 'pan_url',         extra: { seller_verified: false, pan_number_ai: null, ai_pan_confidence: null } },
+            qr:      { urlField: 'payment_qr_url',  extra: { seller_verified: false } }
+        };
+        const config = fieldMap[type];
+        if (!config) return res.status(400).json({ success: false, message: 'Invalid document type' });
+
+        const { data: profile, error: fetchError } = await supabase
+            .from('profiles').select(config.urlField).eq('id', user.id).maybeSingle();
+        if (fetchError) throw fetchError;
+
+        const existingUrl = profile?.[config.urlField];
+        if (existingUrl) {
+            const fileName = existingUrl.split('/').pop();
+            const { error: removeError } = await supabase.storage.from('verification').remove([fileName]);
+            if (removeError) console.error('Storage remove error:', removeError.message);
+        }
+
+        const { error: updateError } = await supabase.from('profiles')
+            .update({ [config.urlField]: null, ...config.extra, updated_at: new Date() })
+            .eq('id', user.id);
+        if (updateError) throw updateError;
+
+        return res.json({ success: true, message: 'Document removed.' });
+    } catch (error) {
+        console.error('Delete verification doc error:', error.message);
+        return res.status(500).json({ success: false, message: error.message });
+    }
+});
+
 // ---- MY LISTINGS ----
 app.get('/api/profile/my-listings', async (req, res) => {
     try {
@@ -689,10 +1028,49 @@ app.post('/api/products/:id/reviews', async (req, res) => {
     }
 });
 
+// ---- AI PRODUCT + REVIEW INSIGHTS ----
+app.get('/api/products/:id/ai-insights', async (req, res) => {
+    try {
+        const { data: product, error: prodError } = await supabase
+            .from('products').select('*').eq('id', req.params.id).single();
+        if (prodError || !product) return res.status(404).json({ success: false, message: 'Product not found' });
+
+        const { data: reviews } = await supabase
+            .from('reviews').select('rating, review_text').eq('product_id', req.params.id);
+        const reviewCount = (reviews || []).length;
+
+        // Reuse a cached analysis if nothing has changed since it was generated
+        if (product.ai_insights && product.ai_insights_review_count === reviewCount) {
+            return res.json({ success: true, insights: product.ai_insights, cached: true });
+        }
+
+        const insights = await generateProductInsights(product, reviews);
+
+        // Best-effort cache write — safe to skip if the columns don't exist yet
+        try {
+            await supabase.from('products')
+                .update({ ai_insights: insights, ai_insights_review_count: reviewCount })
+                .eq('id', product.id);
+        } catch (cacheErr) {
+            console.warn('AI insights cache write skipped:', cacheErr.message);
+        }
+
+        return res.json({ success: true, insights, cached: false });
+    } catch (error) {
+        console.error('AI insights route error:', error.message);
+        return res.status(500).json({ success: false, message: 'Failed to generate AI insights' });
+    }
+});
+
 // ---- CREATE LISTING (WITH GEMINI MODERATION INTEGRATION) ----
 app.post('/api/listings/create', async (req, res) => { //[cite: 1]
     try { //[cite: 1]
         const user = await getUserFromToken(req); //[cite: 1]
+
+        const turnstileToken = req.body['cf-turnstile-response'];
+        const humanVerified = await verifyTurnstile(turnstileToken, req.ip);
+        if (!humanVerified)
+            return res.status(400).json({ success: false, message: 'Bot verification failed. Please try again.' });
 
         // Map and sanitize all incoming parameters from your listing system
         const title           = sanitizeString(req.body.title           || '', 200); //[cite: 1]
@@ -792,6 +1170,39 @@ app.use((err, req, res, next) => {
         return res.status(400).json({ success: false, message: err.message });
     }
     next();
+});
+
+// =========================================================================
+// GEOAPIFY LOCATION AUTOCOMPLETE ROUTES
+// (kept server-side so the API key is never exposed to the browser)
+// =========================================================================
+app.get('/api/geoapify/autocomplete', async (req, res) => {
+    try {
+        const text = (req.query.text || '').trim();
+        if (!text) return res.json({ success: true, results: [] });
+        if (!GEOAPIFY_KEY) return res.status(500).json({ success: false, message: 'Geoapify not configured' });
+
+        const url = `https://api.geoapify.com/v1/geocode/autocomplete?text=${encodeURIComponent(text)}` +
+                    `&filter=countrycode:in&format=json&apiKey=${GEOAPIFY_KEY}`;
+
+        const geoRes = await fetch(url);
+        if (!geoRes.ok) throw new Error(`Geoapify error: ${geoRes.status}`);
+        const data = await geoRes.json();
+
+        const results = (data.results || []).map(r => ({
+            formatted:   r.formatted,
+            city:        r.city || r.county || '',
+            state:       r.state || '',
+            lat:         r.lat,
+            lon:         r.lon,
+            place_id:    r.place_id
+        }));
+
+        return res.json({ success: true, results });
+    } catch (err) {
+        console.error('Geoapify autocomplete error:', err.message);
+        return res.status(500).json({ success: false, message: 'Autocomplete failed' });
+    }
 });
 
 // =========================================================================
