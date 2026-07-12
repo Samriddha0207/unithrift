@@ -483,7 +483,7 @@ After both servers are running, open your browser and navigate to:
 
 ```
 http://localhost:3000
-
+---
 
 # Performance Goals
 
