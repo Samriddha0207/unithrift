@@ -73,6 +73,33 @@ function refreshSessionDeduped(refreshToken) {
 const GEMINI_MODEL = "gemini-2.5-flash";
 const genAI = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
+// =========================================================================
+// RETRY HELPER FOR THIRD-PARTY HTTP CALLS
+// =========================================================================
+// Only retries transient failures: network-level errors (DNS blip, timeout,
+// connection reset — fetch() throws for these) and 429/5xx responses. A 4xx
+// like a bad request or bad API key is not retried, since retrying it just
+// repeats the same failure. Exponential backoff with jitter to avoid
+// hammering the upstream service in a tight loop.
+async function fetchWithRetry(url, options = {}, { retries = 3, baseDelayMs = 300, retryStatusCodes = [429, 502, 503, 504] } = {}) {
+    let lastErr;
+    for (let attempt = 0; attempt <= retries; attempt++) {
+        try {
+            const res = await fetch(url, options);
+            if (res.ok || !retryStatusCodes.includes(res.status) || attempt === retries) {
+                return res;
+            }
+            lastErr = new Error(`Retryable HTTP ${res.status}`);
+        } catch (err) {
+            lastErr = err;
+            if (attempt === retries) throw lastErr;
+        }
+        const delay = baseDelayMs * 2 ** attempt + Math.random() * 100;
+        await new Promise(resolve => setTimeout(resolve, delay));
+    }
+    throw lastErr;
+}
+
 async function askGemini(parts) {
     const response = await genAI.models.generateContent({
         model: GEMINI_MODEL,
@@ -91,7 +118,7 @@ function extractJson(text) {
 
 async function verifyProductWithAI(title, description, imageUrls) {
     try {
-        const mainImageResp = await fetch(imageUrls[0]);
+        const mainImageResp = await fetchWithRetry(imageUrls[0]);
         if (!mainImageResp.ok) throw new Error(`Could not fetch product image (${mainImageResp.status})`);
         const arrayBuffer = await mainImageResp.arrayBuffer();
         const base64Data = Buffer.from(arrayBuffer).toString("base64");
@@ -186,7 +213,7 @@ async function verifyTurnstile(token, remoteIp) {
         body.append('response', token);
         if (remoteIp) body.append('remoteip', remoteIp);
 
-        const verifyRes = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
+        const verifyRes = await fetchWithRetry('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
             method: 'POST',
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
             body
@@ -644,7 +671,23 @@ app.post('/api/login', loginLimiter, async (req, res) => {
         
         return res.json({ success: true, message: 'Welcome back to UniThrift!', token, refresh_token });
     } catch (error) {
-        return res.status(400).json({ success: false, message: 'Invalid credentials. Please try again.' });
+        // Previously every failure here — a real wrong password, a network
+        // blip calling Supabase, an RPC error, anything — was flattened into
+        // the same "Invalid credentials" message with zero logging. That's
+        // indistinguishable from an actual wrong password to the user, and
+        // unrecoverable to debug server-side, since nothing was ever printed.
+        console.error('Login error:', error.message || error);
+
+        const isBadCredentials = /invalid login credentials/i.test(error.message || '');
+
+        if (isBadCredentials) {
+            return res.status(400).json({ success: false, message: 'Invalid credentials. Please try again.' });
+        }
+
+        return res.status(500).json({
+            success: false,
+            message: 'Login failed due to a temporary issue. Please try again in a moment.'
+        });
     }
 });
 
@@ -1188,7 +1231,7 @@ app.get('/api/geoapify/autocomplete', async (req, res) => {
         const url = `https://api.geoapify.com/v1/geocode/autocomplete?text=${encodeURIComponent(text)}` +
                     `&filter=countrycode:in&format=json&apiKey=${GEOAPIFY_KEY}`;
 
-        const geoRes = await fetch(url);
+        const geoRes = await fetchWithRetry(url);
         if (!geoRes.ok) throw new Error(`Geoapify error: ${geoRes.status}`);
         const data = await geoRes.json();
 

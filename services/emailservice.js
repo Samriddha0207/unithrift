@@ -6,24 +6,61 @@ if (!process.env.RESEND_API_KEY) {
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
+// =========================================================================
+// RETRY HELPER
+// =========================================================================
+// The Resend SDK wraps its own HTTP call, so there's no fetch() here to
+// swap out directly — this wraps whatever async function is passed in.
+// Only retries transient failures: a thrown network-level error (timeout,
+// DNS blip, connection reset — no statusCode attached), or an explicit
+// 429/5xx from Resend. Everything else (bad API key, invalid `from`
+// address, malformed recipient) fails immediately, since retrying a
+// permanent error just delays the real failure reaching the caller.
+function isRetryableEmailError(err) {
+    const status = err.statusCode || err.status;
+    if (status) return [429, 500, 502, 503, 504].includes(status);
+    return true;
+}
+
+async function withRetry(fn, { retries = 3, baseDelayMs = 300, isRetryable = () => true } = {}) {
+    let lastErr;
+    for (let attempt = 0; attempt <= retries; attempt++) {
+        try {
+            return await fn();
+        } catch (err) {
+            lastErr = err;
+            if (attempt === retries || !isRetryable(err)) throw err;
+            console.warn(`Email send attempt ${attempt + 1} failed (${err.message}), retrying...`);
+        }
+        const delay = baseDelayMs * 2 ** attempt + Math.random() * 100;
+        await new Promise(resolve => setTimeout(resolve, delay));
+    }
+    throw lastErr;
+}
+
 /**
  * Base email sender
  */
 async function sendEmail({ to, subject, html }) {
     try {
-        const { data, error } = await resend.emails.send({
-            from: process.env.EMAIL_FROM,
-            to,
-            subject,
-            html
-        });
+        return await withRetry(async () => {
+            const { data, error } = await resend.emails.send({
+                from: process.env.EMAIL_FROM,
+                to,
+                subject,
+                html
+            });
 
-        if (error) {
-            console.error("Resend Error:", error);
-            throw new Error(error.message);
-        }
+            if (error) {
+                console.error("Resend Error:", error);
+                const err = new Error(error.message);
+                err.statusCode = error.statusCode;
+                err.name = error.name;
+                throw err;
+            }
 
-        return data;
+            return data;
+        }, { retries: 3, baseDelayMs: 300, isRetryable: isRetryableEmailError });
     } catch (err) {
         console.error("Email Service Error:", err);
         throw err;

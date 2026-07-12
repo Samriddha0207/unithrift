@@ -50,6 +50,49 @@ let currentUserName = null;
 let activeRoomId = null;
 
 // ======================================
+// SUPABASE REALTIME CLIENT (chat only)
+// ======================================
+// window.__SUPABASE_URL__ / __SUPABASE_ANON__ are injected server-side by
+// sendWithSupabaseConfig() for this page. This client is ONLY used for
+// Realtime subscriptions — all reads/writes still go through authFetch so
+// the backend's own auth + RLS-bypassing service role stays authoritative.
+const realtimeClient = (window.supabase && window.__SUPABASE_URL__ && window.__SUPABASE_ANON__)
+  ? window.supabase.createClient(window.__SUPABASE_URL__, window.__SUPABASE_ANON__, {
+      auth: {
+        // authFetch (auth-fetch.js) already owns token refresh end-to-end.
+        // If this client ran its own autoRefreshToken timer too, it would
+        // independently rotate the same Supabase refresh token in the
+        // background — and since refresh tokens are single-use, whichever
+        // side loses the race gets "Invalid Refresh Token: Already Used".
+        // This client only ever borrows the token authFetch already holds.
+        autoRefreshToken: false,
+        persistSession: false,
+        detectSessionInUrl: false
+      }
+    })
+  : null;
+
+let chatChannel = null;
+let realtimeSessionSynced = false;
+
+// Realtime authorizes postgres_changes against RLS using the session set on
+// this client, not the localStorage token authFetch uses. Keep them in sync
+// whenever we (re)open a chat room.
+async function syncRealtimeSession() {
+  if (!realtimeClient) return;
+  const access_token = localStorage.getItem("unithrift_session_token");
+  const refresh_token = localStorage.getItem("unithrift_refresh_token");
+  if (!access_token || !refresh_token) return;
+  try {
+    await realtimeClient.auth.setSession({ access_token, refresh_token });
+    realtimeSessionSynced = true;
+  } catch (err) {
+    console.error("Failed to sync realtime session:", err);
+    realtimeSessionSynced = false;
+  }
+}
+
+// ======================================
 // TOAST NOTIFICATIONS
 // ======================================
 const toastContainer = document.getElementById("toastContainer");
@@ -520,7 +563,6 @@ window.addEventListener("click", (e) => {
 // ENHANCED CHAT COMPONENT ENGINE
 // ======================================
 let loadedMessageIds = new Set();
-let chatPollInterval = null;
 
 function formatMessageTime(dateInput) {
   const date = dateInput ? new Date(dateInput) : new Date();
@@ -581,7 +623,10 @@ function populateChatHeader() {
   }
 }
 
-async function fetchMessages() {
+// One-time load of existing history when a chat room is opened. Live
+// updates after this point come from the Realtime subscription below, not
+// from re-polling this endpoint.
+async function loadInitialMessages() {
   if (!activeRoomId) return;
   const token = localStorage.getItem("unithrift_session_token");
   if (!token) return;
@@ -589,39 +634,69 @@ async function fetchMessages() {
   try {
     const response = await authFetch(`/api/chat/rooms/${activeRoomId}/messages`);
     const msgResult = await response.json();
-    
+
     if (msgResult.success && msgResult.messages) {
-      let addedNew = false;
       msgResult.messages.forEach(msg => {
         if (!loadedMessageIds.has(msg.id)) {
           loadedMessageIds.add(msg.id);
           const direction = (String(msg.sender_id) === String(currentUserId)) ? "sent" : "received";
           const timestamp = msg.created_at || msg.inserted_at || msg.timestamp;
           appendMessageToUI(msg.message_text, direction, timestamp);
-          addedNew = true;
         }
       });
-      if (addedNew && chatMessages) {
-        chatMessages.scrollTop = chatMessages.scrollHeight;
-      }
+      if (chatMessages) chatMessages.scrollTop = chatMessages.scrollHeight;
     }
   } catch (err) {
-    console.error("Error fetching messages during poll:", err);
+    console.error("Error loading initial chat history:", err);
   }
 }
 
-function startPolling() {
-  stopPolling();
-  fetchMessages();
-  chatPollInterval = setInterval(fetchMessages, 2500);
+// Subscribes to new INSERTs on `messages` for this room via Supabase
+// Realtime, scoped by RLS to rooms the logged-in user is a buyer/seller of.
+async function subscribeToRoom(roomId) {
+  unsubscribeFromRoom();
+  if (!realtimeClient || !roomId) return;
+
+  await syncRealtimeSession();
+  if (!realtimeSessionSynced) {
+    console.warn("Realtime session not available — live messages won't stream in until the chat is reopened.");
+  }
+
+  chatChannel = realtimeClient
+    .channel(`chat-room-${roomId}`)
+    .on(
+      "postgres_changes",
+      { event: "INSERT", schema: "public", table: "messages", filter: `room_id=eq.${roomId}` },
+      (payload) => {
+        const msg = payload.new;
+        if (!msg || loadedMessageIds.has(msg.id)) return;
+        loadedMessageIds.add(msg.id);
+        const direction = (String(msg.sender_id) === String(currentUserId)) ? "sent" : "received";
+        appendMessageToUI(msg.message_text, direction, msg.created_at);
+      }
+    )
+    .subscribe((status) => {
+      if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
+        console.error("Realtime chat subscription failed:", status);
+      }
+    });
 }
 
-function stopPolling() {
-  if (chatPollInterval) {
-    clearInterval(chatPollInterval);
-    chatPollInterval = null;
+function unsubscribeFromRoom() {
+  if (chatChannel && realtimeClient) {
+    realtimeClient.removeChannel(chatChannel);
   }
+  chatChannel = null;
 }
+
+// authFetch (auth-fetch.js) owns token rotation and broadcasts this event
+// whenever it writes new tokens to localStorage. Since realtimeClient has
+// autoRefreshToken disabled (see its init above), this is the only way its
+// session stays valid across a long-lived chat session. Only bother resyncing
+// while a chat channel is actually open — no point otherwise.
+window.addEventListener("unithrift:tokens-updated", () => {
+  if (chatChannel) syncRealtimeSession();
+});
 
 async function syncChatRoomHistory() {
   const sendChatBtn = document.getElementById("sendChatBtn");
@@ -656,11 +731,12 @@ async function syncChatRoomHistory() {
         '<div class="message system-msg">Welcome to campus chat! Protect your data.</div>';
     }
 
-    startPolling();
+    await loadInitialMessages();
+    await subscribeToRoom(activeRoomId);
 
   } catch (err) {
     console.error("Failed to restore chat room history:", err);
-    stopPolling();
+    unsubscribeFromRoom();
     activeRoomId = null;
 
     if (err.code === "MULTIPLE_BUYERS") {
@@ -727,7 +803,7 @@ if (chatWithSellerBtn) {
 if (closeChatBtn) {
   closeChatBtn.addEventListener("click", () => {
     if (chatPopup) chatPopup.classList.remove("open");
-    stopPolling();
+    unsubscribeFromRoom();
   });
 }
 
@@ -765,11 +841,13 @@ if (chatForm) {
 
       const result = await response.json();
 
-      if (result.success || response.ok) {
-        await fetchMessages();
-      } else {
+      if (!(result.success || response.ok)) {
         console.error("Failed to send message:", result.message);
+        showToast("Message failed to send.", "error");
       }
+      // No manual re-fetch here: the insert lands back on the Realtime
+      // channel (subscribeToRoom's INSERT listener), which appends it for
+      // the sender the same way it does for the recipient.
 
     } catch (err) {
       console.error("Failed to execute chat send system pipeline:", err);

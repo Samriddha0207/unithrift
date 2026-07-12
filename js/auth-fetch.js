@@ -24,6 +24,7 @@
                     if (data.refresh_token) {
                         localStorage.setItem("unithrift_refresh_token", data.refresh_token);
                     }
+                    window.dispatchEvent(new CustomEvent("unithrift:tokens-updated"));
                     return data.access_token;
                 }
             } catch (err) {
@@ -57,6 +58,7 @@
             const r = res.headers.get("X-New-Refresh-Token");
             if (a) localStorage.setItem("unithrift_session_token", a);
             if (r) localStorage.setItem("unithrift_refresh_token", r);
+            if (a || r) window.dispatchEvent(new CustomEvent("unithrift:tokens-updated"));
         };
 
         const forceLogout = () => {
@@ -73,6 +75,12 @@
             if (newToken) {
                 response = await fetch(url, { ...options, headers: buildHeaders() });
                 persistHeaders(response);
+
+                // If the retried request STILL 401s after a successful refresh,
+                // the session is genuinely dead — bail out here instead of
+                // silently returning the 401. Without this, every other
+                // authFetch call on the page independently repeats the same
+                // 401 -> refresh -> retry cycle, hammering /api/auth/refresh.
                 if (response.status === 401) forceLogout();
             } else {
                 forceLogout();
