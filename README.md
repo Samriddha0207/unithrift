@@ -608,9 +608,9 @@ Future enhancements include:
 
 ## Team Members
 
-### Md Rizwaan Rahaman - Backend Server Management + Scalability + Debugging + Testing, System Design
+### Md Rizwaan Rahaman - Backend + Server Management + Testing + Scalability
 
-###  Samriddha Chaudhury - Frontend + Deployment
+###  Samriddha Chaudhury - Frontend + Deployment +  System Design + Debugging
 
 
 
