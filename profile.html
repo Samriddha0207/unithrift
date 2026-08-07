@@ -5,13 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>UniThrift | Profile</title>
     <link rel="stylesheet" href="/css/profile.css">
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 </head>
 <body class="light-theme">
 
-    <div id="loadingOverlay" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.75); z-index:9999; align-items:center; justify-content:center;">
-        <div style="color:#fff; font-size:1.1rem; font-family:Poppins,sans-serif;"><i class="fas fa-spinner fa-spin"></i> Loading...</div>
+    <div id="loadingOverlay" style="display:none; position:fixed; inset:0; background:rgba(20,17,11,0.78); z-index:9999; align-items:center; justify-content:center;">
+        <div style="color:#f6efe0; font-size:1.1rem; font-family:Inter,sans-serif;"><i class="fas fa-spinner fa-spin"></i> Loading...</div>
     </div>
 
     <nav class="navbar">
@@ -61,6 +61,9 @@
                 </span>
                 <p class="ph-meta"><i class="fas fa-at"></i> <span id="userEmail">—</span></p>
                 <p class="ph-meta"><i class="fas fa-phone"></i> <span id="userPhone">Not added</span></p>
+                <button class="copy-link-btn" id="copyProfileLinkBtn" type="button">
+                    <i class="fas fa-link"></i> Copy Profile Link
+                </button>
             </div>
 
             <div class="ph-stats">
@@ -144,6 +147,7 @@
 
                 <section class="pcard glow-card">
                     <div class="pcard-title"><i class="fas fa-shield-halved"></i> Verification Hub</div>
+                    <div id="verificationProgress" class="ver-progress"></div>
                     <div id="verificationSummary">
                         <p class="loading-text"><i class="fas fa-spinner fa-spin"></i> Checking status...</p>
                     </div>
@@ -230,6 +234,22 @@
             </div>
         </div>
     </footer>
+
+    <div id="toastContainer" class="toast-container" aria-live="polite" aria-atomic="true"></div>
+
+    <div id="confirmModal" class="confirm-modal-overlay">
+        <div class="confirm-modal-box">
+            <div class="confirm-modal-icon">
+                <i class="fas fa-triangle-exclamation"></i>
+            </div>
+            <h3 id="confirmModalTitle">Are you sure?</h3>
+            <p id="confirmModalMessage">This action cannot be undone.</p>
+            <div class="confirm-modal-actions">
+                <button id="confirmModalCancel" class="confirm-btn confirm-btn--ghost">Cancel</button>
+                <button id="confirmModalOk" class="confirm-btn confirm-btn--danger">Confirm</button>
+            </div>
+        </div>
+    </div>
 
     <!-- Unified API Authorization wrapper loaded before profile.js -->
     <script src="/js/auth-fetch.js"></script>

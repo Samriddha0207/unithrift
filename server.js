@@ -144,6 +144,36 @@ async function createNotification(userId, message, type = 'info', referenceId = 
     if (error) console.error('createNotification error:', error.message);
 }
 
+// Turns a buyer's "Make an Offer" / "Propose a Pickup Time" chat message into a
+// short one-line brief for the seller's notification, instead of dumping the
+// raw formatted message. Falls back to a plain templated line if Gemini is
+// unavailable — a notification is always created either way.
+function fallbackChatBrief(kind, messageText, senderName) {
+    const label = kind === 'offer' ? 'New offer' : 'New pickup proposal';
+    return `${label} from ${senderName}: "${messageText.slice(0, 80)}"`;
+}
+
+async function generateChatBrief(kind, messageText, senderName, productTitle) {
+    try {
+        const prompt = kind === 'offer'
+            ? `A buyer named ${senderName} sent this offer message to a seller on a campus marketplace, about a listing titled "${productTitle}":
+"${messageText}"
+
+Write ONE short, plain-English notification line (under 100 characters) telling the seller what was offered. Lead with the price if one is mentioned. Do not use quotes, markdown, or emoji. Return only the line itself.`
+            : `A buyer named ${senderName} sent this pickup-time proposal to a seller on a campus marketplace, about a listing titled "${productTitle}":
+"${messageText}"
+
+Write ONE short, plain-English notification line (under 100 characters) telling the seller when the buyer wants to pick up the item. Do not use quotes, markdown, or emoji. Return only the line itself.`;
+
+        const text = await askGemini([{ text: prompt }]);
+        const brief = text.trim().replace(/^["']|["']$/g, '').split('\n')[0].slice(0, 160);
+        return brief || fallbackChatBrief(kind, messageText, senderName);
+    } catch (err) {
+        console.error('generateChatBrief error:', err.message);
+        return fallbackChatBrief(kind, messageText, senderName);
+    }
+}
+
 // Verifies a Cloudflare Turnstile token. Used by /api/signup and /api/listings/create
 async function verifyTurnstile(token, remoteIp) {
     if (!TURNSTILE_SECRET_KEY) {
@@ -1229,6 +1259,16 @@ app.post('/api/notifications/read-all', async (req, res) => {
     } catch (err) { return res.status(401).json({ success: false, message: err.message }); }
 });
 
+app.delete('/api/notifications/:id', async (req, res) => {
+    try {
+        const user = await getUserFromToken(req);
+        const { error } = await supabase.from('notifications')
+            .delete().eq('id', req.params.id).eq('user_id', user.id);
+        if (error) throw error;
+        return res.json({ success: true });
+    } catch (err) { return res.status(401).json({ success: false, message: err.message }); }
+});
+
 // =========================================================================
 // CHAT API ENDPOINTS
 // =========================================================================
@@ -1372,24 +1412,45 @@ app.post('/api/chat/rooms/:room_id/messages', async (req, res) => {
             return res.status(400).json({ success: false, message: 'Message cannot be empty' });
 
         const { data: room } = await supabase
-            .from('chat_rooms').select('buyer_id, seller_id').eq('id', req.params.room_id).single();
+            .from('chat_rooms')
+            .select('buyer_id, seller_id, product_id, products(title)')
+            .eq('id', req.params.room_id).single();
         if (!room || (room.buyer_id !== user.id && room.seller_id !== user.id))
             return res.status(403).json({ success: false, message: 'Access denied' });
 
+        const trimmedText = message_text.trim();
+
         const { data: msg, error } = await supabase
             .from('messages')
-            .insert({ room_id: req.params.room_id, sender_id: user.id, message_text: message_text.trim() })
+            .insert({ room_id: req.params.room_id, sender_id: user.id, message_text: trimmedText })
             .select().single();
         if (error) throw error;
 
         const recipientId = room.buyer_id === user.id ? room.seller_id : room.buyer_id;
         const senderName = (await supabase.from('profiles').select('username').eq('id', user.id).maybeSingle()).data?.username || 'Someone';
-        createNotification(
-            recipientId,
-            `New message from ${senderName}: "${message_text.trim().slice(0, 80)}"`,
-            'message',
-            req.params.room_id
-        );
+
+        // product.js prefixes "Make an Offer" / "Propose a Pickup Time" messages
+        // with these emoji so they can be told apart here without a schema
+        // change. Anything else is treated as a regular chat message, unchanged.
+        const isOffer = trimmedText.startsWith('💰');
+        const isPickup = trimmedText.startsWith('📅');
+        const notifType = isOffer ? 'offer' : (isPickup ? 'pickup' : 'message');
+        const productTitle = room.products?.title || 'your listing';
+
+        // Fire-and-forget: never delay the chat-send response on notification
+        // generation (the Gemini call for offers/pickups in particular), and
+        // never let a failure here surface as a chat-send error.
+        (async () => {
+            try {
+                const notifMessage = (isOffer || isPickup)
+                    ? await generateChatBrief(isOffer ? 'offer' : 'pickup', trimmedText, senderName, productTitle)
+                    : `New message from ${senderName}: "${trimmedText.slice(0, 80)}"`;
+
+                await createNotification(recipientId, notifMessage, notifType, req.params.room_id);
+            } catch (notifErr) {
+                console.error('Chat notification generation failed:', notifErr.message);
+            }
+        })();
 
         return res.json({ success: true, message: msg });
     } catch (err) {
@@ -1413,5 +1474,5 @@ app.use((err, req, res, next) => {
 });
 
 app.listen(PORT, () => {
-    console.log(`🚀 UniThrift running at http://localhost:${PORT}`);
+    console.log(` UniThrift running at http://localhost:${PORT}`);
 });

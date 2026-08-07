@@ -5,206 +5,183 @@
     <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
 
     <meta charset="UTF-8">
-
-    <meta name="viewport"
-          content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
     <title>UniThrift | Sell Item</title>
 
     <link rel="stylesheet" href="/css/sell.css">
-
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap"
-          rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 </head>
 
-<body>
+<body class="dark-theme">
 
     <nav class="navbar">
-
         <div class="logo">
+            <span class="logo-mark"><i class="fas fa-bag-shopping"></i></span>
             UniThrift
         </div>
 
-        <div class="nav-links">
-
-            <a href="/marketplace">
-                Marketplace
-            </a>
-
-            <a href="/profile">
-                Profile
-            </a>
-
-            <a href="/sell">
-                Sell Item
-            </a>
-
+        <div class="nav-center">
+            <a href="/marketplace">Marketplace</a>
+            <a href="/profile">Profile</a>
+            <a href="/sell" class="active">Sell Item</a>
+            <button class="theme-toggle-link" id="navbarThemeToggle" type="button">
+                <i class="fas fa-sun"></i><i class="fas fa-moon"></i>
+                <span>Theme</span>
+            </button>
         </div>
-
     </nav>
 
     <section class="sell-container">
+        <div class="sell-layout">
 
-        <div class="sell-card">
-
-            <h1>
-                Create Listing
-            </h1>
-
-            <form id="sellForm">
-
-                <input
-                    type="text"
-                    id="title"
-                    placeholder="Product Name"
-                    required>
-
-                <select
-                    id="category"
-                    required>
-
-                    <option value="">
-                        Select Category
-                    </option>
-
-                    <option>
-                        Books
-                    </option>
-
-                    <option>
-                        Electronics
-                    </option>
-
-                    <option>
-                        Lab Equipment
-                    </option>
-
-                    <option>
-                        Notes
-                    </option>
-
-                    <option>
-                        Hostel Items
-                    </option>
-
-                    <option>
-                        Uniforms
-                    </option>
-
-                </select>
-
-                <input
-                    type="number"
-                    id="price"
-                    placeholder="Price"
-                    required>
-
-                <select
-                    id="condition"
-                    required>
-
-                    <option value="">
-                        Product Condition
-                    </option>
-
-                    <option>
-                        Like New
-                    </option>
-
-                    <option>
-                        Excellent
-                    </option>
-
-                    <option>
-                        Good
-                    </option>
-
-                    <option>
-                        Fair
-                    </option>
-
-                </select>
-
-                <textarea
-                    id="description"
-                    rows="6"
-                    placeholder="Description"
-                    required>
-                </textarea>
-
-                <input
-                    type="text"
-                    id="collectionPoint"
-                    placeholder="Collection / Pickup Point (e.g., Hostel 2 Lounge, Main Gate)"
-                    required>
-
-                <input
-                    type="tel"
-                    id="contactNo"
-                    placeholder="Contact Number / WhatsApp"
-                    required>
-
-                <input
-                    type="date"
-                    id="deliveryDate">
-
-                <input
-                    type="text"
-                    id="paymentMethods"
-                    placeholder="UPI, Cash, Bank Transfer">
-
-                <label>
-                    Upload Product Images
-                </label>
-
-                <input
-                    type="file"
-                    id="productImages"
-                    multiple
-                    accept="image/*">
-
-                <div id="previewContainer">
-
+            <div class="sell-card">
+                <div class="sell-card-header">
+                    <h1>Create Listing</h1>
+                    <p>Fill in the details below to list your item on campus.</p>
                 </div>
 
-                <div class="cf-turnstile" data-sitekey="0x4AAAAAADyHfUVt4-tqoZhk" data-theme="light" style="margin-bottom: 1rem;"></div>
+                <form id="sellForm">
 
-                <div class="verification-box">
+                    <div class="form-section">
+                        <h2><i class="fas fa-tag"></i> Basic Details</h2>
 
-                    <h3>
-                        AI Verification
-                    </h3>
+                        <div class="form-group">
+                            <label for="title">Product Name</label>
+                            <input type="text" id="title" placeholder="e.g. Data Structures Textbook, 3rd Edition" required>
+                        </div>
 
-                    <p>
-                        Uploaded images will be checked
-                        for visible damage before approval.
-                    </p>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="category">Category</label>
+                                <select id="category" required>
+                                    <option value="">Select Category</option>
+                                    <option>Books</option>
+                                    <option>Electronics</option>
+                                    <option>Lab Equipment</option>
+                                    <option>Notes</option>
+                                    <option>Hostel Items</option>
+                                    <option>Uniforms</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="condition">Condition</label>
+                                <select id="condition" required>
+                                    <option value="">Product Condition</option>
+                                    <option>Like New</option>
+                                    <option>Excellent</option>
+                                    <option>Good</option>
+                                    <option>Fair</option>
+                                </select>
+                            </div>
+                        </div>
 
-                    <div id="verificationStatus">
+                        <div class="form-group">
+                            <label for="price">Price (₹)</label>
+                            <input type="number" id="price" placeholder="e.g. 450" required>
+                        </div>
 
-                        Awaiting Upload...
-
+                        <div class="form-group">
+                            <label for="description">Description</label>
+                            <textarea id="description" rows="5" placeholder="Condition details, reason for selling, anything a buyer should know..." required></textarea>
+                        </div>
                     </div>
 
+                    <div class="form-section">
+                        <h2><i class="fas fa-location-dot"></i> Pickup &amp; Contact</h2>
+
+                        <div class="form-group">
+                            <label for="collectionPoint">Collection / Pickup Point</label>
+                            <input type="text" id="collectionPoint" placeholder="e.g. Hostel 2 Lounge, Main Gate" required>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="contactNo">Contact Number / WhatsApp</label>
+                                <input type="tel" id="contactNo" placeholder="e.g. 98765 43210" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="deliveryDate">Available From</label>
+                                <input type="date" id="deliveryDate">
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="paymentMethods">Payment Methods Accepted</label>
+                            <input type="text" id="paymentMethods" placeholder="UPI, Cash, Bank Transfer">
+                        </div>
+                    </div>
+
+                    <div class="form-section">
+                        <h2><i class="fas fa-camera"></i> Photos</h2>
+
+                        <div class="form-group">
+                            <label for="productImages">Upload Product Images</label>
+                            <input type="file" id="productImages" multiple accept="image/*">
+                        </div>
+
+                        <div id="previewContainer"></div>
+                    </div>
+
+                    <div class="form-section">
+                        <h2><i class="fas fa-shield-halved"></i> Security &amp; Verification</h2>
+
+                        <div class="cf-turnstile" data-sitekey="0x4AAAAAADyHfUVt4-tqoZhk" data-theme="light" style="margin-bottom: 1rem;"></div>
+
+                        <div class="verification-box">
+                            <h3><i class="fas fa-robot"></i> AI Verification</h3>
+                            <p>Uploaded images will be checked for visible damage before approval.</p>
+                            <div id="verificationStatus" class="ver-status ver-status--waiting">
+                                <i class="fas fa-clock"></i> <span>Awaiting Upload...</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <button type="submit">
+                        <i class="fas fa-circle-check"></i> Publish Listing
+                    </button>
+
+                </form>
+            </div>
+
+            <aside class="preview-col">
+                <div class="preview-sticky">
+                    <h3 class="preview-heading"><i class="fas fa-eye"></i> Live Preview</h3>
+                    <p class="preview-sub">This is how your listing will look in the marketplace.</p>
+
+                    <div class="listing-preview-card">
+                        <div class="lp-image-wrap">
+                            <img id="lpImage" alt="Preview" style="display:none;">
+                            <div id="lpImagePlaceholder" class="lp-placeholder">
+                                <i class="fas fa-image"></i>
+                                <span>No photo yet</span>
+                            </div>
+                        </div>
+                        <div class="lp-content">
+                            <h4 id="lpTitle">Your item name</h4>
+                            <div class="meta-wrapper">
+                                <span class="category" id="lpCategory">Category</span>
+                                <span class="condition" id="lpCondition">Condition</span>
+                            </div>
+                            <div class="price" id="lpPrice">₹0</div>
+                            <p class="lp-desc" id="lpDesc">Your description will appear here as you type...</p>
+                            <p class="lp-location" id="lpLocation">
+                                <i class="fas fa-location-dot"></i> <span>Pickup point not set</span>
+                            </p>
+                        </div>
+                    </div>
                 </div>
-
-                <button type="submit">
-
-                    Publish Listing
-
-                </button>
-
-            </form>
+            </aside>
 
         </div>
-
     </section>
 
     <footer>
-
         © 2026 UniThrift
-
     </footer>
+
+    <div id="toastContainer" class="toast-container" aria-live="polite" aria-atomic="true"></div>
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
 

@@ -1,29 +1,4 @@
 // ======================================
-// OAUTH CALLBACK HANDLER
-// server.js's /api/auth/google sets redirectTo to this page (/marketplace),
-// so Supabase lands the browser back here with the session in the URL hash
-// (#access_token=...&refresh_token=...) after Google login completes.
-// login.js has an identical-looking handler, but it never runs for this flow
-// since the browser never visits /login — without this block here, the
-// tokens just sit unused in the hash and the user shows up logged out.
-// ======================================
-(function handleOAuthCallback() {
-    if (!window.location.hash || !window.location.hash.includes("access_token")) return;
-
-    const hashParams   = new URLSearchParams(window.location.hash.slice(1));
-    const accessToken  = hashParams.get("access_token");
-    const refreshToken = hashParams.get("refresh_token");
-    if (!accessToken) return;
-
-    localStorage.setItem("unithrift_session_token", accessToken);
-    if (refreshToken) localStorage.setItem("unithrift_refresh_token", refreshToken);
-
-    // Strip the tokens out of the URL; the rest of marketplace.js's init
-    // reads the token from localStorage as usual.
-    history.replaceState(null, "", window.location.pathname);
-})();
-
-// ======================================
 // ELEMENTS
 // ======================================
 const productsContainer = document.getElementById("productsContainer");
@@ -49,13 +24,33 @@ const confirmModalTitle = document.getElementById("confirmModalTitle");
 const confirmModalMessage = document.getElementById("confirmModalMessage");
 const confirmModalOk = document.getElementById("confirmModalOk");
 const confirmModalCancel = document.getElementById("confirmModalCancel");
+const wishlistBtn = document.getElementById("wishlistBtn");
+const wishlistModal = document.getElementById("wishlistModal");
+const wishlistItems = document.getElementById("wishlistItems");
+const closeWishlist = document.getElementById("closeWishlist");
+const wishlistBadge = document.getElementById("wishlistBadge");
+const sortFilter = document.getElementById("sortFilter");
+const quickViewModal = document.getElementById("quickViewModal");
+const closeQuickView = document.getElementById("closeQuickView");
+const quickViewImage = document.getElementById("quickViewImage");
+const quickViewSoldBadge = document.getElementById("quickViewSoldBadge");
+const quickViewCategory = document.getElementById("quickViewCategory");
+const quickViewCondition = document.getElementById("quickViewCondition");
+const quickViewTitle = document.getElementById("quickViewTitle");
+const quickViewPrice = document.getElementById("quickViewPrice");
+const quickViewDescription = document.getElementById("quickViewDescription");
+const quickViewAddCart = document.getElementById("quickViewAddCart");
+const quickViewWishlist = document.getElementById("quickViewWishlist");
+const quickViewFullLink = document.getElementById("quickViewFullLink");
 
 // ======================================
 // GLOBAL DATA
 // ======================================
 let allProducts = [];
 let cart = JSON.parse(localStorage.getItem("cart")) || [];
-let currentUserId = null; 
+let wishlist = JSON.parse(localStorage.getItem("wishlist")) || [];
+let currentUserId = null;
+let quickViewProductId = null;
 
 // ======================================
 // LOADING
@@ -217,6 +212,109 @@ function closeCartModal() {
     cartModal.classList.remove("open");
 }
 
+// ======================================
+// WISHLIST FUNCTIONS
+// ======================================
+function saveWishlist() {
+    localStorage.setItem("wishlist", JSON.stringify(wishlist));
+    updateWishlistBadge();
+}
+
+function updateWishlistBadge() {
+    if (!wishlistBadge) return;
+    if (wishlist.length > 0) {
+        wishlistBadge.textContent = wishlist.length;
+        wishlistBadge.style.display = "flex";
+    } else {
+        wishlistBadge.style.display = "none";
+    }
+}
+
+function isWishlisted(id) {
+    return wishlist.some(p => p.id == id);
+}
+
+function toggleWishlist(product) {
+    if (isWishlisted(product.id)) {
+        wishlist = wishlist.filter(p => p.id != product.id);
+        saveWishlist();
+        showToast("Removed from wishlist", "info");
+    } else {
+        wishlist.push(product);
+        saveWishlist();
+        showToast("Saved to wishlist", "success");
+    }
+    syncWishlistButtons(product.id);
+}
+
+// Keeps every heart icon for this product (grid card + quick view) in sync
+// after a toggle, without needing a full re-render.
+function syncWishlistButtons(id) {
+    const active = isWishlisted(id);
+    document.querySelectorAll(`.wishlist-btn[data-id="${id}"]`).forEach(btn => {
+        btn.classList.toggle("active", active);
+    });
+    if (quickViewWishlist && quickViewProductId == id) {
+        quickViewWishlist.classList.toggle("active", active);
+    }
+}
+
+function closeWishlistModal() {
+    wishlistModal.classList.remove("open");
+}
+
+function openWishlist() {
+    wishlistItems.innerHTML = "";
+
+    if (wishlist.length === 0) {
+        wishlistItems.innerHTML = `
+            <div class="empty-cart">
+                <i class="fas fa-heart"></i>
+                <p>Nothing saved yet</p>
+            </div>
+        `;
+    } else {
+        wishlist.forEach(item => {
+            const div = document.createElement("div");
+            div.classList.add("cart-item");
+            div.innerHTML = `
+                <img src="${item.image_url || 'https://via.placeholder.com/150'}" alt="${escapeHtml(item.title)}" class="cart-item-img">
+                <div class="cart-item-details">
+                    <div>
+                        <h3>${escapeHtml(item.title)}</h3>
+                        <p class="cart-item-desc">${escapeHtml(item.description || 'No product description available for this item.')}</p>
+                    </div>
+                    <div class="cart-item-meta">
+                        <span class="price" style="margin: 0; font-size: 1.1rem;">₹${Number(item.price).toLocaleString('en-IN')}</span>
+                        <button class="remove-cart-btn" data-id="${item.id}">Remove</button>
+                    </div>
+                </div>
+            `;
+            wishlistItems.appendChild(div);
+        });
+
+        wishlistItems.querySelectorAll(".remove-cart-btn").forEach(btn => {
+            btn.addEventListener("click", () => {
+                const id = btn.dataset.id;
+                wishlist = wishlist.filter(p => p.id != id);
+                saveWishlist();
+                syncWishlistButtons(id);
+                openWishlist();
+            });
+        });
+    }
+
+    wishlistModal.classList.add("open");
+}
+
+if (wishlistBtn) wishlistBtn.addEventListener("click", openWishlist);
+if (closeWishlist) closeWishlist.addEventListener("click", closeWishlistModal);
+if (wishlistModal) {
+    wishlistModal.addEventListener("click", (e) => {
+        if (e.target === wishlistModal) closeWishlistModal();
+    });
+}
+
 function openCart() {
     cartItems.innerHTML = "";
 
@@ -329,7 +427,10 @@ cartModal.addEventListener("click", (e) => {
 });
 
 document.addEventListener("keydown", (e) => {
-    if (e.key === "Escape" && cartModal.classList.contains("open")) closeCartModal();
+    if (e.key !== "Escape") return;
+    if (cartModal.classList.contains("open")) closeCartModal();
+    if (wishlistModal && wishlistModal.classList.contains("open")) closeWishlistModal();
+    if (quickViewModal && quickViewModal.classList.contains("open")) closeQuickViewModal();
 });
 
 // ======================================
@@ -399,6 +500,10 @@ function renderProducts(products) {
             <div class="product-image-wrap">
                 <img src="${escapeHtml(product.image_url)}" alt="${escapeHtml(product.title)}" class="product-image" onerror="this.src='https://placehold.co/600x400?text=UniThrift'">
                 ${isSold ? '<div class="sold-badge">SOLD</div>' : ''}
+                <button class="wishlist-btn${isWishlisted(product.id) ? ' active' : ''}" data-id="${product.id}" aria-label="Save to wishlist"><i class="fas fa-heart"></i></button>
+                <div class="quickview-trigger">
+                    <button class="quickview-trigger-btn" data-id="${product.id}"><i class="fas fa-eye"></i> Quick View</button>
+                </div>
             </div>
             <div class="product-content">
                 <h3>${escapeHtml(product.title)}</h3>
@@ -418,6 +523,8 @@ function renderProducts(products) {
     attachViewButtons();
     attachCartButtons();
     attachMarkSoldButtons();
+    attachWishlistButtons();
+    attachQuickViewButtons();
 }
 
 function escapeHtml(str) {
@@ -479,6 +586,85 @@ function attachMarkSoldButtons() {
     });
 }
 
+function attachWishlistButtons() {
+    document.querySelectorAll(".wishlist-btn").forEach(button => {
+        button.onclick = (e) => {
+            e.stopPropagation();
+            const product = allProducts.find(p => p.id == button.dataset.id);
+            if (!product) return;
+            toggleWishlist(product);
+        };
+    });
+}
+
+function attachQuickViewButtons() {
+    document.querySelectorAll(".quickview-trigger-btn").forEach(button => {
+        button.onclick = (e) => {
+            e.stopPropagation();
+            const product = allProducts.find(p => p.id == button.dataset.id);
+            if (!product) return;
+            openQuickView(product);
+        };
+    });
+}
+
+// ======================================
+// QUICK VIEW MODAL
+// ======================================
+function openQuickView(product) {
+    if (!quickViewModal) return;
+    quickViewProductId = product.id;
+    const isSold = !!product.is_sold;
+
+    quickViewImage.src = product.image_url;
+    quickViewImage.alt = product.title;
+    quickViewImage.onerror = () => { quickViewImage.src = 'https://placehold.co/600x400?text=UniThrift'; };
+    quickViewSoldBadge.style.display = isSold ? "block" : "none";
+    quickViewCategory.textContent = product.category;
+    quickViewCondition.textContent = product.condition;
+    quickViewTitle.textContent = product.title;
+    quickViewPrice.textContent = `₹${Number(product.price).toLocaleString('en-IN')}`;
+    quickViewDescription.textContent = product.description || "No product description available for this item.";
+    quickViewFullLink.href = `/product?id=${product.id}`;
+
+    quickViewWishlist.classList.toggle("active", isWishlisted(product.id));
+    quickViewWishlist.onclick = () => toggleWishlist(product);
+
+    if (isSold) {
+        quickViewAddCart.textContent = "Sold Out";
+        quickViewAddCart.disabled = true;
+        quickViewAddCart.style.opacity = "0.4";
+        quickViewAddCart.style.cursor = "not-allowed";
+    } else {
+        quickViewAddCart.textContent = "Add To Cart";
+        quickViewAddCart.disabled = false;
+        quickViewAddCart.style.opacity = "1";
+        quickViewAddCart.style.cursor = "pointer";
+        quickViewAddCart.onclick = () => {
+            if (cart.some(p => p.id == product.id)) {
+                return showToast("This item is already in your cart", "warning");
+            }
+            cart.push(product);
+            saveCart();
+            showToast("Added to cart", "success");
+        };
+    }
+
+    quickViewModal.classList.add("open");
+}
+
+function closeQuickViewModal() {
+    quickViewModal.classList.remove("open");
+    quickViewProductId = null;
+}
+
+if (closeQuickView) closeQuickView.addEventListener("click", closeQuickViewModal);
+if (quickViewModal) {
+    quickViewModal.addEventListener("click", (e) => {
+        if (e.target === quickViewModal) closeQuickViewModal();
+    });
+}
+
 // ======================================
 // SEARCH & FILTERS
 // ======================================
@@ -514,7 +700,28 @@ function applyAllFilters() {
         return matchesQuery && matchesCategory && matchesCondition && matchesPrice;
     });
 
-    renderProducts(filtered);
+    renderProducts(sortProducts(filtered));
+}
+
+// "Newest" leaves API order untouched (assumed newest-first from the backend);
+// the other options sort a copy so the original allProducts order is preserved.
+function sortProducts(products) {
+    const sortBy = sortFilter ? sortFilter.value : "newest";
+    const sorted = [...products];
+    switch (sortBy) {
+        case "price-asc":
+            sorted.sort((a, b) => Number(a.price) - Number(b.price));
+            break;
+        case "price-desc":
+            sorted.sort((a, b) => Number(b.price) - Number(a.price));
+            break;
+        case "name-asc":
+            sorted.sort((a, b) => a.title.localeCompare(b.title));
+            break;
+        default:
+            break;
+    }
+    return sorted;
 }
 
 searchBtn.addEventListener("click", applyAllFilters);
@@ -532,6 +739,7 @@ conditionFilter.addEventListener("change", applyAllFilters);
 // so this applies once the user lets go rather than re-filtering per pixel.
 if (priceMinInput) priceMinInput.addEventListener("change", applyAllFilters);
 if (priceMaxInput) priceMaxInput.addEventListener("change", applyAllFilters);
+if (sortFilter) sortFilter.addEventListener("change", applyAllFilters);
 
 // ======================================
 // THEME & ACTIONS
@@ -574,3 +782,4 @@ document.body.classList.add(savedTheme);
 
 initSessionAndProducts();
 updateCartBadge();
+updateWishlistBadge();

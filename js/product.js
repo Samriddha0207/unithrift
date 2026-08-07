@@ -1,4 +1,22 @@
 // ======================================
+// THEME TOGGLE (synced with marketplace/profile/sell via the shared "theme" key)
+// ======================================
+const navbarThemeToggle = document.getElementById("navbarThemeToggle");
+const savedTheme = localStorage.getItem("theme") || "dark-theme";
+document.body.classList.remove("dark-theme", "light-theme");
+document.body.classList.add(savedTheme);
+
+if (navbarThemeToggle) {
+    navbarThemeToggle.addEventListener("click", () => {
+        const isDark = document.body.classList.contains("dark-theme");
+        const next = isDark ? "light-theme" : "dark-theme";
+        document.body.classList.remove("dark-theme", "light-theme");
+        document.body.classList.add(next);
+        localStorage.setItem("theme", next);
+    });
+}
+
+// ======================================
 // PRODUCT ID FROM URL
 // ======================================
 const params = new URLSearchParams(window.location.search);
@@ -43,10 +61,78 @@ const chatProductImage = document.getElementById("chatProductImage");
 const chatProductTitle = document.getElementById("chatProductTitle");
 const chatProductPrice = document.getElementById("chatProductPrice");
 
+const wishlistBtn = document.getElementById("wishlistBtn");
+const copyLinkBtn = document.getElementById("copyLinkBtn");
+const listedAgo = document.getElementById("listedAgo");
+
+const zoomBtn = document.getElementById("zoomBtn");
+const lightbox = document.getElementById("lightbox");
+const lightboxImage = document.getElementById("lightboxImage");
+const closeLightbox = document.getElementById("closeLightbox");
+const lightboxPrev = document.getElementById("lightboxPrev");
+const lightboxNext = document.getElementById("lightboxNext");
+
+const pickupPointRow = document.getElementById("pickupPointRow");
+const pickupPointText = document.getElementById("pickupPointText");
+const togglePickupMapBtn = document.getElementById("togglePickupMapBtn");
+const pickupMapWrap = document.getElementById("pickupMapWrap");
+const pickupMapFrame = document.getElementById("pickupMapFrame");
+
+const makeOfferBtn = document.getElementById("makeOfferBtn");
+const offerModal = document.getElementById("offerModal");
+const closeOfferModal = document.getElementById("closeOfferModal");
+const offerForm = document.getElementById("offerForm");
+const offerProductImage = document.getElementById("offerProductImage");
+const offerProductTitle = document.getElementById("offerProductTitle");
+const offerAskingPrice = document.getElementById("offerAskingPrice");
+const offerAmount = document.getElementById("offerAmount");
+const offerMessage = document.getElementById("offerMessage");
+const offerMessageCount = document.getElementById("offerMessageCount");
+const offerSavingsHint = document.getElementById("offerSavingsHint");
+const offerQuickChips = document.getElementById("offerQuickChips");
+const offerPreview = document.getElementById("offerPreview");
+const offerPreviewText = document.getElementById("offerPreviewText");
+
+const proposePickupBtn = document.getElementById("proposePickupBtn");
+const pickupModal = document.getElementById("pickupModal");
+const closePickupModal = document.getElementById("closePickupModal");
+const pickupForm = document.getElementById("pickupForm");
+const pickupProductImage = document.getElementById("pickupProductImage");
+const pickupProductTitle = document.getElementById("pickupProductTitle");
+const pickupProductLocation = document.getElementById("pickupProductLocation");
+const pickupDate = document.getElementById("pickupDate");
+const pickupSlot = document.getElementById("pickupSlot");
+const pickupNote = document.getElementById("pickupNote");
+const pickupDateChips = document.getElementById("pickupDateChips");
+const pickupSlotChips = document.getElementById("pickupSlotChips");
+const pickupPreview = document.getElementById("pickupPreview");
+const pickupPreviewText = document.getElementById("pickupPreviewText");
+
+const reportListingBtn = document.getElementById("reportListingBtn");
+const reportModal = document.getElementById("reportModal");
+const closeReportModal = document.getElementById("closeReportModal");
+const reportForm = document.getElementById("reportForm");
+
+const relatedSection = document.getElementById("relatedSection");
+const relatedStrip = document.getElementById("relatedStrip");
+const moreFromSellerBlock = document.getElementById("moreFromSellerBlock");
+const moreFromSellerStrip = document.getElementById("moreFromSellerStrip");
+const recentlyViewedSection = document.getElementById("recentlyViewedSection");
+const recentlyViewedStrip = document.getElementById("recentlyViewedStrip");
+
+const reviewsSummary = document.getElementById("reviewsSummary");
+const chatResponseBadge = document.getElementById("chatResponseBadge");
+
+const mobileActionBar = document.getElementById("mobileActionBar");
+const mobileActionPrice = document.getElementById("mobileActionPrice");
+const mobileAddCartBtn = document.getElementById("mobileAddCartBtn");
+
 let currentProduct = null;
 let currentSeller = null;
 let currentUserId = null;
-let currentUserName = null; 
+let currentUserName = null;
+let productImageUrls = [];
+let currentImageIndex = 0;
 let activeRoomId = null;
 
 // ======================================
@@ -118,6 +204,79 @@ function showConfirm(message, title = "Are you sure?") {
         document.addEventListener("keydown", onKeydown);
     });
 }
+// ======================================
+// WISHLIST (synced with the marketplace's wishlist via the shared "wishlist" key)
+// ======================================
+function getWishlist() {
+    try { return JSON.parse(localStorage.getItem("wishlist")) || []; }
+    catch { return []; }
+}
+
+function isWishlisted(id) {
+    return getWishlist().some(p => p.id == id);
+}
+
+function toggleWishlist(product) {
+    let wishlist = getWishlist();
+    const already = wishlist.some(p => p.id == product.id);
+
+    if (already) {
+        wishlist = wishlist.filter(p => p.id != product.id);
+        showToast("Removed from wishlist", "info");
+    } else {
+        wishlist.push(product);
+        showToast("Saved to wishlist", "success");
+    }
+
+    localStorage.setItem("wishlist", JSON.stringify(wishlist));
+    if (wishlistBtn) wishlistBtn.classList.toggle("active", !already);
+}
+
+if (wishlistBtn) {
+    wishlistBtn.addEventListener("click", () => {
+        if (!currentProduct) return showToast("Product data is loading. Please wait a moment.", "warning");
+        toggleWishlist({
+            id: currentProduct.id,
+            title: currentProduct.title,
+            price: currentProduct.price,
+            category: currentProduct.category || "",
+            condition: currentProduct.condition,
+            description: currentProduct.description,
+            image_url: mainImage?.src || ""
+        });
+    });
+}
+
+// ======================================
+// COPY PRODUCT LINK
+// ======================================
+if (copyLinkBtn) {
+    copyLinkBtn.addEventListener("click", async () => {
+        const link = window.location.href.split("#")[0];
+        try {
+            await navigator.clipboard.writeText(link);
+        } catch (err) {
+            const temp = document.createElement("textarea");
+            temp.value = link;
+            temp.style.position = "fixed";
+            temp.style.opacity = "0";
+            document.body.appendChild(temp);
+            temp.select();
+            document.execCommand("copy");
+            document.body.removeChild(temp);
+        }
+
+        showToast("Product link copied!", "success");
+        const origHTML = copyLinkBtn.innerHTML;
+        copyLinkBtn.innerHTML = '<i class="fas fa-check"></i> Copied!';
+        copyLinkBtn.classList.add("copied");
+        setTimeout(() => {
+            copyLinkBtn.innerHTML = origHTML;
+            copyLinkBtn.classList.remove("copied");
+        }, 2000);
+    });
+}
+
 // ======================================
 // AUTH HELPERS
 // ======================================
@@ -221,9 +380,14 @@ function renderSellerLayout(token) {
   if (contactSellerBtn) {
     contactSellerBtn.style.display = 'none';
   }
+  // These are buyer actions — don't make sense on your own listing.
+  if (makeOfferBtn) makeOfferBtn.style.display = 'none';
+  if (proposePickupBtn) proposePickupBtn.style.display = 'none';
+  if (reportListingBtn) reportListingBtn.style.display = 'none';
+  if (mobileActionBar) mobileActionBar.style.display = 'none';
   
   const dashboardBadge = document.createElement('div');
-  dashboardBadge.style.cssText = "width:100%; text-align:center; padding: 10px; background: #1e293b; color: #94a3b8; font-weight: 600; border-radius: 12px; margin-bottom: 8px; font-size: 0.9rem; border: 1px solid #334155;";
+  dashboardBadge.style.cssText = "width:100%; text-align:center; padding: 10px; background: var(--input-bg); color: var(--secondary); font-weight: 600; border-radius: 12px; margin-bottom: 8px; font-size: 0.9rem; border: 1px solid var(--border);";
   dashboardBadge.textContent = "🔒 You are managing this listing";
   actionButtonsWrapper.appendChild(dashboardBadge);
 
@@ -231,7 +395,7 @@ function renderSellerLayout(token) {
     const markSoldBtn = document.createElement('button');
     markSoldBtn.id = 'markSoldBtnGenerated';
     markSoldBtn.textContent = 'Mark as Sold';
-    markSoldBtn.style.cssText = "width:100%; padding:13px; border:none; border-radius:12px; background:#f59e0b; color:white; font-weight:700; font-size:1rem; cursor:pointer; transition:.2s;";
+    markSoldBtn.style.cssText = "width:100%; padding:13px; border:none; border-radius:12px; background:var(--warning); color:white; font-weight:700; font-size:1rem; cursor:pointer; transition:.2s;";
     
     markSoldBtn.addEventListener('click', async () => {
       const confirmed = await showConfirm("Mark this listing as sold? This cannot be undone.", "Mark as Sold?");
@@ -261,7 +425,7 @@ function renderSellerLayout(token) {
     const deleteBtn = document.createElement('button');
     deleteBtn.id = 'deleteBtnGenerated';
     deleteBtn.textContent = 'Delete Item';
-    deleteBtn.style.cssText = "width:100%; padding:13px; border:none; border-radius:12px; background:#ef4444; color:white; font-weight:700; font-size:1rem; cursor:pointer; transition:.2s; margin-top: 8px;";
+    deleteBtn.style.cssText = "width:100%; padding:13px; border:none; border-radius:12px; background:var(--danger); color:white; font-weight:700; font-size:1rem; cursor:pointer; transition:.2s; margin-top: 8px;";
     
     deleteBtn.addEventListener('click', async () => {
       const confirmed = await showConfirm("Are you sure you want to delete this listing? This action cannot be undone.", "Delete Listing?");
@@ -316,6 +480,10 @@ async function loadProduct() {
     if (!result.success) throw new Error("Product not found");
 
     currentProduct = result.product;
+    if (wishlistBtn) wishlistBtn.classList.toggle("active", isWishlisted(currentProduct.id));
+
+    [productTitle, productPrice].forEach(el => el && el.classList.remove("skeleton"));
+
     productTitle.textContent = currentProduct.title;
     productPrice.textContent = `₹${Number(currentProduct.price).toLocaleString('en-IN')}`;
     productCondition.textContent = `Condition: ${currentProduct.condition}`;
@@ -323,11 +491,16 @@ async function loadProduct() {
     paymentMethods.textContent = currentProduct.payment_methods || "UPI";
     productDescription.textContent = currentProduct.description;
 
+    if (mobileActionPrice) mobileActionPrice.textContent = `₹${Number(currentProduct.price).toLocaleString('en-IN')}`;
+
+    renderListedAgo(currentProduct.created_at);
+    renderPickupPoint(currentProduct.collection_point);
+
     const targetedSellerId = currentProduct.seller_id || currentProduct.user_id;
 
     if (currentProduct.is_sold) {
       const soldBanner = document.createElement('div');
-      soldBanner.style.cssText = "background:#ef4444;color:white;text-align:center;padding:12px;font-weight:700;font-size:1.1rem;letter-spacing:2px;margin-bottom:16px;border-radius:10px;";
+      soldBanner.style.cssText = "background:var(--danger);color:white;text-align:center;padding:12px;font-weight:700;font-size:1.1rem;letter-spacing:2px;margin-bottom:16px;border-radius:10px;";
       soldBanner.textContent = "⚠️ THIS ITEM HAS BEEN SOLD";
       
       const detailsSection = document.querySelector('.details-section');
@@ -338,6 +511,11 @@ async function loadProduct() {
         cartBtn.disabled = true;
         cartBtn.style.opacity = '0.4';
         cartBtn.style.cursor = 'not-allowed';
+      }
+      if (mobileAddCartBtn) {
+        mobileAddCartBtn.disabled = true;
+        mobileAddCartBtn.style.opacity = '0.4';
+        mobileAddCartBtn.style.cursor = 'not-allowed';
       }
     }
 
@@ -378,9 +556,66 @@ if (params.get("openChat") === "1" && chatWithSellerBtn && chatWithSellerBtn.sty
   chatWithSellerBtn.click();
 }
 
+addToRecentlyViewed(currentProduct, mainImage?.src);
+loadRelatedListings(currentProduct.category, currentProduct.id);
+loadMoreFromSeller(targetedSellerId, currentProduct.id);
+renderRecentlyViewed(currentProduct.id);
+
   } catch (err) {
     console.error(err);
     if (productTitle) productTitle.textContent = "Product Not Found";
+  }
+}
+
+// ======================================
+// LISTED-AGO / PICKUP-POINT HELPERS
+// ======================================
+function renderListedAgo(createdAt) {
+  if (!listedAgo || !createdAt) return;
+  const then = new Date(createdAt).getTime();
+  if (Number.isNaN(then)) return;
+
+  const diffMs = Date.now() - then;
+  const days = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+  let text;
+  if (days <= 0) {
+    const hours = Math.floor(diffMs / (1000 * 60 * 60));
+    text = hours <= 0 ? "Listed just now" : `Listed ${hours} hour${hours === 1 ? "" : "s"} ago`;
+  } else if (days === 1) {
+    text = "Listed yesterday";
+  } else if (days < 30) {
+    text = `Listed ${days} days ago`;
+  } else {
+    const months = Math.floor(days / 30);
+    text = `Listed ${months} month${months === 1 ? "" : "s"} ago`;
+  }
+
+  listedAgo.querySelector("span").textContent = text;
+  listedAgo.style.display = "inline-flex";
+}
+
+function renderPickupPoint(collectionPoint) {
+  if (!pickupPointRow || !collectionPoint) return;
+  pickupPointText.textContent = collectionPoint;
+  pickupPointRow.style.display = "block";
+
+  if (togglePickupMapBtn) {
+    togglePickupMapBtn.addEventListener("click", () => {
+      const isHidden = pickupMapWrap.style.display === "none";
+      if (isHidden && !pickupMapFrame.src) {
+        // Assumes the seller's collection point text is descriptive enough to
+        // geocode on its own (e.g. "Hostel 2 Lounge, XYZ College") — no lat/lng
+        // is stored for listings, so this uses Google's query-based map embed
+        // rather than a precise pin.
+        const query = encodeURIComponent(collectionPoint);
+        pickupMapFrame.src = `https://www.google.com/maps?q=${query}&output=embed`;
+      }
+      pickupMapWrap.style.display = isHidden ? "block" : "none";
+      togglePickupMapBtn.innerHTML = isHidden
+        ? '<i class="fas fa-map-location-dot"></i> Hide map'
+        : '<i class="fas fa-map-location-dot"></i> View on map';
+    });
   }
 }
 
@@ -418,20 +653,48 @@ async function loadImages(id) {
     const { images } = await response.json();
 
     if (images && images.length > 0) {
-      if (mainImage) mainImage.src = images[0].image_url;
+      productImageUrls = images.map(img => img.image_url);
+
+      if (mainImage) {
+        mainImage.src = images[0].image_url;
+        mainImage.classList.remove("skeleton");
+      }
       if (thumbnailContainer) {
         thumbnailContainer.innerHTML = "";
-        images.forEach(img => {
+        images.forEach((img, index) => {
+          const wrap = document.createElement("div");
+          wrap.className = "thumb-wrap";
+
           const thumb = document.createElement("img");
           thumb.src = img.image_url;
           thumb.classList.add("thumb");
-          thumb.addEventListener("click", () => { if (mainImage) mainImage.src = img.image_url; });
-          thumbnailContainer.appendChild(thumb);
+          if (index === 0) thumb.classList.add("active");
+          thumb.addEventListener("click", () => {
+            if (mainImage) mainImage.src = img.image_url;
+            thumbnailContainer.querySelectorAll(".thumb").forEach(t => t.classList.remove("active"));
+            thumb.classList.add("active");
+            currentImageIndex = index;
+          });
+          wrap.appendChild(thumb);
+
+          // Per-photo captions: inert until the backend adds a caption field
+          // on product_images — renders automatically once img.caption exists.
+          if (img.caption) {
+            const caption = document.createElement("span");
+            caption.className = "thumb-caption";
+            caption.textContent = img.caption;
+            wrap.appendChild(caption);
+          }
+
+          thumbnailContainer.appendChild(wrap);
         });
       }
+    } else if (mainImage) {
+      mainImage.classList.remove("skeleton");
     }
   } catch (err) {
     console.error(err);
+    if (mainImage) mainImage.classList.remove("skeleton");
   }
 }
 
@@ -446,21 +709,99 @@ async function loadReviews(id) {
     reviewsContainer.innerHTML = "";
 
     if (!reviews || reviews.length === 0) {
+      if (reviewsSummary) reviewsSummary.style.display = "none";
       reviewsContainer.innerHTML = `<div class="review-card">No reviews yet.</div>`;
       return;
     }
 
-    reviews.forEach(review => {
+    renderReviewsSummary(reviews);
+
+    // Sort by helpful votes (highest first) so the most useful reviews float
+    // to the top once there's more than a couple.
+    const votes = getHelpfulVotes();
+    const sorted = [...reviews].sort((a, b) => (votes[b.id] || 0) - (votes[a.id] || 0));
+
+    sorted.forEach(review => {
+      const verifiedTag = review.verified_purchase
+        ? `<span class="verified-purchase-tag"><i class="fas fa-circle-check"></i> Verified Buyer</span>`
+        : "";
+      const helpfulCount = votes[review.id] || 0;
+      const voted = hasVotedHelpful(review.id);
+
       reviewsContainer.innerHTML += `
         <div class="review-card">
-          <h4>${"⭐".repeat(review.rating)}</h4>
-          <p>${review.review_text}</p>
+          <div class="review-card-head">
+            <h4>${"⭐".repeat(review.rating)}</h4>
+            ${verifiedTag}
+          </div>
+          <p>${escapeHtml(review.review_text)}</p>
+          <div class="review-card-footer">
+            <button class="helpful-btn${voted ? " voted" : ""}" data-review-id="${review.id}">
+              <i class="fas fa-thumbs-up"></i> Helpful${helpfulCount > 0 ? ` (${helpfulCount})` : ""}
+            </button>
+          </div>
         </div>
       `;
+    });
+
+    reviewsContainer.querySelectorAll(".helpful-btn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        toggleHelpfulVote(btn.dataset.reviewId);
+        loadReviews(id);
+      });
     });
   } catch (err) {
     console.error(err);
   }
+}
+
+function renderReviewsSummary(reviews) {
+  if (!reviewsSummary) return;
+  const count = reviews.length;
+  const avg = reviews.reduce((sum, r) => sum + Number(r.rating || 0), 0) / count;
+  const roundedStars = Math.round(avg);
+
+  reviewsSummary.innerHTML = `
+    <div class="reviews-summary-score">${avg.toFixed(1)}</div>
+    <div>
+      <div class="reviews-summary-stars">${"★".repeat(roundedStars)}${"☆".repeat(5 - roundedStars)}</div>
+      <div class="reviews-summary-count">Based on ${count} review${count === 1 ? "" : "s"}</div>
+    </div>
+  `;
+  reviewsSummary.style.display = "flex";
+}
+
+// Helpful-vote counts are tracked per-browser via localStorage, not on the
+// server — there's no votes table/endpoint for this yet, so counts won't be
+// shared across different visitors. Good enough to demo the sort-by-helpful
+// behavior; wire up a real backend table to make counts global.
+function getHelpfulVotes() {
+  try { return JSON.parse(localStorage.getItem("review_helpful_votes")) || {}; }
+  catch { return {}; }
+}
+
+function hasVotedHelpful(reviewId) {
+  try {
+    const voted = JSON.parse(localStorage.getItem("review_helpful_voted_ids")) || [];
+    return voted.includes(String(reviewId));
+  } catch { return false; }
+}
+
+function toggleHelpfulVote(reviewId) {
+  const votes = getHelpfulVotes();
+  const votedIds = new Set(JSON.parse(localStorage.getItem("review_helpful_voted_ids") || "[]"));
+  const key = String(reviewId);
+
+  if (votedIds.has(key)) {
+    votedIds.delete(key);
+    votes[key] = Math.max(0, (votes[key] || 1) - 1);
+  } else {
+    votedIds.add(key);
+    votes[key] = (votes[key] || 0) + 1;
+  }
+
+  localStorage.setItem("review_helpful_votes", JSON.stringify(votes));
+  localStorage.setItem("review_helpful_voted_ids", JSON.stringify([...votedIds]));
 }
 
 // ======================================
@@ -500,10 +841,10 @@ async function loadAIInsights(id) {
 function renderAIInsights(data) {
   if (!aiInsights || !data) return;
   const recommendation = data.recommendation || "Neutral";
-  let badgeColor = "#f59e0b";
+  let badgeClass = "neutral";
 
-  if (recommendation === "Positive") badgeColor = "#10b981";
-  if (recommendation === "Caution") badgeColor = "#ef4444";
+  if (recommendation === "Positive") badgeClass = "positive";
+  if (recommendation === "Caution") badgeClass = "caution";
 
   const keyPoints = (data.key_points || [])
     .map(point => `<li>✔ ${point}</li>`)
@@ -511,7 +852,7 @@ function renderAIInsights(data) {
 
   aiInsights.innerHTML = `
     <div class="ai-summary-card">
-      <div class="ai-recommendation" style="background:${badgeColor};">${recommendation}</div>
+      <div class="ai-recommendation ${badgeClass}">${recommendation}</div>
       <div class="ai-section">
         <h3>📦 Product Assessment</h3>
         <p>${data.product_summary || "No summary available."}</p>
@@ -668,6 +1009,23 @@ function populateChatHeader() {
   }
 
   if (chatOnlineIndicator) chatOnlineIndicator.style.background = "#10b981";
+
+  // Only renders if the backend actually provides a response-time metric —
+  // there's no such field in the current API responses, so this stays
+  // hidden until a real value (e.g. seller.avg_response_minutes) is wired up
+  // server-side. Left in place rather than faking a number.
+  if (chatResponseBadge) {
+    const minutes = sellerData?.avg_response_minutes;
+    if (typeof minutes === "number" && minutes > 0) {
+      const label = minutes < 60
+        ? `~${Math.round(minutes)} min`
+        : `~${Math.round(minutes / 60)} hr`;
+      chatResponseBadge.innerHTML = `<i class="fas fa-bolt"></i> Usually replies within ${label}`;
+      chatResponseBadge.style.display = "inline-flex";
+    } else {
+      chatResponseBadge.style.display = "none";
+    }
+  }
 
   if (currentProduct) {
     if (chatProductImage) chatProductImage.src = mainImage?.src || "";
@@ -884,6 +1242,498 @@ if (chatForm) {
       console.error("Transmission execution system pipeline error:", err);
     }
   });
+}
+
+console.log("[UniThrift] Offer/Pickup elements found on page load:", {
+  makeOfferBtn: !!makeOfferBtn,
+  offerModal: !!offerModal,
+  proposePickupBtn: !!proposePickupBtn,
+  pickupModal: !!pickupModal
+});
+
+// ======================================
+// IMAGE LIGHTBOX
+// ======================================
+function openLightbox(index) {
+  if (!lightbox || productImageUrls.length === 0) return;
+  currentImageIndex = index;
+  lightboxImage.src = productImageUrls[currentImageIndex];
+  lightbox.classList.add("open");
+}
+
+function showLightboxImage(index) {
+  if (productImageUrls.length === 0) return;
+  currentImageIndex = (index + productImageUrls.length) % productImageUrls.length;
+  lightboxImage.src = productImageUrls[currentImageIndex];
+}
+
+if (zoomBtn) {
+  zoomBtn.addEventListener("click", () => openLightbox(currentImageIndex));
+}
+if (mainImage) {
+  mainImage.style.cursor = "zoom-in";
+  mainImage.addEventListener("click", () => openLightbox(currentImageIndex));
+}
+if (closeLightbox) closeLightbox.addEventListener("click", () => lightbox.classList.remove("open"));
+if (lightboxPrev) lightboxPrev.addEventListener("click", () => showLightboxImage(currentImageIndex - 1));
+if (lightboxNext) lightboxNext.addEventListener("click", () => showLightboxImage(currentImageIndex + 1));
+if (lightbox) {
+  lightbox.addEventListener("click", (e) => { if (e.target === lightbox) lightbox.classList.remove("open"); });
+}
+document.addEventListener("keydown", (e) => {
+  if (!lightbox || !lightbox.classList.contains("open")) return;
+  if (e.key === "Escape") lightbox.classList.remove("open");
+  if (e.key === "ArrowLeft") showLightboxImage(currentImageIndex - 1);
+  if (e.key === "ArrowRight") showLightboxImage(currentImageIndex + 1);
+});
+
+// ======================================
+// SEND A MESSAGE THROUGH THE EXISTING CHAT PIPELINE
+// Reused by "Make an Offer" and "Propose a Pickup Time" so both features
+// ride on the chat/room infrastructure already built, instead of needing
+// new backend endpoints of their own.
+// ======================================
+async function sendChatMessage(text) {
+  if (!localStorage.getItem("unithrift_session_token")) {
+    showToast("Please login to message the seller.", "warning");
+    return false;
+  }
+  if (!currentProduct) {
+    showToast("Product data is loading. Please wait a moment.", "warning");
+    return false;
+  }
+
+  if (!chatPopup.classList.contains("open") && chatWithSellerBtn) {
+    chatWithSellerBtn.click();
+  }
+
+  let attempts = 0;
+  while (!activeRoomId && attempts < 30) {
+    await new Promise(r => setTimeout(r, 150));
+    attempts++;
+  }
+
+  if (!activeRoomId) {
+    showToast("Chat isn't ready yet — try again in a moment.", "warning");
+    return false;
+  }
+
+  if (chatInput) chatInput.value = text;
+  if (chatForm) {
+    chatForm.dispatchEvent(new Event("submit", { cancelable: true }));
+  }
+  return true;
+}
+
+// ======================================
+// MAKE AN OFFER
+// ======================================
+function buildOfferMessage() {
+  const amount = Number(offerAmount.value) || 0;
+  const note = offerMessage.value.trim();
+  let text = `💰 I'd like to offer ₹${amount.toLocaleString('en-IN')} for "${currentProduct?.title || 'this item'}".`;
+  if (note) text += ` ${note}`;
+  return text;
+}
+
+function updateOfferPreview() {
+  const amount = Number(offerAmount.value);
+
+  if (amount > 0) {
+    offerPreview.style.display = "block";
+    offerPreviewText.textContent = buildOfferMessage();
+  } else {
+    offerPreview.style.display = "none";
+  }
+
+  if (amount > 0 && currentProduct?.price) {
+    const askingPrice = Number(currentProduct.price);
+    const diff = askingPrice - amount;
+    const pct = Math.round((diff / askingPrice) * 100);
+
+    if (diff > 0) {
+      offerSavingsHint.textContent = `That's ₹${diff.toLocaleString('en-IN')} (${pct}%) below the asking price.`;
+      offerSavingsHint.classList.remove("offer-savings-hint--over");
+    } else if (diff < 0) {
+      offerSavingsHint.textContent = `That's above the ₹${askingPrice.toLocaleString('en-IN')} asking price — you could also just Add to Cart.`;
+      offerSavingsHint.classList.add("offer-savings-hint--over");
+    } else {
+      offerSavingsHint.textContent = "That matches the asking price exactly.";
+      offerSavingsHint.classList.remove("offer-savings-hint--over");
+    }
+    offerSavingsHint.style.display = "block";
+  } else {
+    offerSavingsHint.style.display = "none";
+  }
+}
+
+if (makeOfferBtn) {
+  makeOfferBtn.addEventListener("click", () => {
+    try {
+      console.log("[UniThrift] Make an Offer clicked", {
+        loggedIn: !!localStorage.getItem("unithrift_session_token"),
+        currentProduct
+      });
+
+      if (!localStorage.getItem("unithrift_session_token")) {
+        return showToast("Please login to make an offer.", "warning");
+      }
+      if (!currentProduct) {
+        return showToast("Product data is loading. Please wait a moment.", "warning");
+      }
+
+      offerProductImage.src = mainImage?.src || "";
+      offerProductTitle.textContent = currentProduct.title;
+      offerAskingPrice.textContent = `₹${Number(currentProduct.price).toLocaleString('en-IN')}`;
+      offerQuickChips.querySelectorAll(".quick-chip").forEach(c => c.classList.remove("active"));
+      updateOfferPreview();
+
+      offerModal.style.display = "flex";
+      offerAmount.focus();
+    } catch (err) {
+      console.error("[UniThrift] Make an Offer failed:", err);
+      showToast("Something went wrong opening this — check the console.", "error");
+    }
+  });
+}
+if (closeOfferModal) closeOfferModal.addEventListener("click", () => offerModal.style.display = "none");
+if (offerModal) offerModal.addEventListener("click", (e) => { if (e.target === offerModal) offerModal.style.display = "none"; });
+
+if (offerQuickChips) {
+  offerQuickChips.querySelectorAll(".quick-chip").forEach(chip => {
+    chip.addEventListener("click", () => {
+      if (!currentProduct?.price) return;
+      const pct = Number(chip.dataset.pct);
+      offerAmount.value = Math.round(Number(currentProduct.price) * pct);
+      offerQuickChips.querySelectorAll(".quick-chip").forEach(c => c.classList.remove("active"));
+      chip.classList.add("active");
+      updateOfferPreview();
+    });
+  });
+}
+
+if (offerAmount) {
+  offerAmount.addEventListener("input", () => {
+    offerQuickChips.querySelectorAll(".quick-chip").forEach(c => c.classList.remove("active"));
+    updateOfferPreview();
+  });
+}
+
+if (offerMessage) {
+  offerMessage.addEventListener("input", () => {
+    offerMessageCount.textContent = `${offerMessage.value.length}/300`;
+    updateOfferPreview();
+  });
+}
+
+if (offerForm) {
+  offerForm.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const submitBtn = offerForm.querySelector("button[type='submit']");
+    const text = buildOfferMessage();
+
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sending...';
+    const sent = await sendChatMessage(text);
+    submitBtn.disabled = false;
+    submitBtn.innerHTML = '<i class="fas fa-paper-plane"></i> Send Offer';
+
+    if (sent) {
+      showToast("Offer sent to the seller!", "success");
+      offerModal.style.display = "none";
+      offerForm.reset();
+      offerMessageCount.textContent = "0/300";
+      offerPreview.style.display = "none";
+      offerSavingsHint.style.display = "none";
+    }
+  });
+}
+
+// ======================================
+// PROPOSE A PICKUP TIME
+// ======================================
+function buildPickupMessage() {
+  const date = pickupDate.value;
+  const slot = pickupSlot.value;
+  const note = pickupNote.value.trim();
+
+  const dateLabel = date
+    ? new Date(date + "T00:00:00").toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long' })
+    : "a date to be confirmed";
+
+  let text = `📅 Could we do pickup on ${dateLabel}, ${slot || "a time to be confirmed"}? Let me know if that works for you.`;
+  if (note) text += ` ${note}`;
+  return text;
+}
+
+function updatePickupPreview() {
+  if (pickupDate.value && pickupSlot.value) {
+    pickupPreview.style.display = "block";
+    pickupPreviewText.textContent = buildPickupMessage();
+  } else {
+    pickupPreview.style.display = "none";
+  }
+}
+
+function formatDateInput(d) {
+  return d.toISOString().split("T")[0];
+}
+
+if (proposePickupBtn) {
+  proposePickupBtn.addEventListener("click", () => {
+    try {
+      console.log("[UniThrift] Propose Pickup clicked", {
+        loggedIn: !!localStorage.getItem("unithrift_session_token"),
+        currentProduct
+      });
+
+      if (!localStorage.getItem("unithrift_session_token")) {
+        return showToast("Please login to propose a pickup time.", "warning");
+      }
+      if (!currentProduct) {
+        return showToast("Product data is loading. Please wait a moment.", "warning");
+      }
+
+      pickupProductImage.src = mainImage?.src || "";
+      pickupProductTitle.textContent = currentProduct.title;
+
+      if (currentProduct.collection_point) {
+        pickupProductLocation.querySelector("span").textContent = currentProduct.collection_point;
+        pickupProductLocation.style.display = "flex";
+      } else {
+        pickupProductLocation.style.display = "none";
+      }
+
+      pickupDateChips.querySelectorAll(".quick-chip").forEach(c => c.classList.remove("active"));
+      pickupSlotChips.querySelectorAll(".quick-chip").forEach(c => c.classList.remove("active"));
+      pickupDate.min = formatDateInput(new Date());
+      updatePickupPreview();
+
+      pickupModal.style.display = "flex";
+    } catch (err) {
+      console.error("[UniThrift] Propose Pickup failed:", err);
+      showToast("Something went wrong opening this — check the console.", "error");
+    }
+  });
+}
+if (closePickupModal) closePickupModal.addEventListener("click", () => pickupModal.style.display = "none");
+if (pickupModal) pickupModal.addEventListener("click", (e) => { if (e.target === pickupModal) pickupModal.style.display = "none"; });
+
+if (pickupDateChips) {
+  pickupDateChips.querySelectorAll(".quick-chip").forEach(chip => {
+    chip.addEventListener("click", () => {
+      const days = Number(chip.dataset.days);
+      const target = new Date();
+      target.setDate(target.getDate() + days);
+      pickupDate.value = formatDateInput(target);
+      pickupDateChips.querySelectorAll(".quick-chip").forEach(c => c.classList.remove("active"));
+      chip.classList.add("active");
+      updatePickupPreview();
+    });
+  });
+}
+
+if (pickupSlotChips) {
+  pickupSlotChips.querySelectorAll(".quick-chip").forEach(chip => {
+    chip.addEventListener("click", () => {
+      pickupSlot.value = chip.dataset.slot;
+      pickupSlotChips.querySelectorAll(".quick-chip").forEach(c => c.classList.remove("active"));
+      chip.classList.add("active");
+      updatePickupPreview();
+    });
+  });
+}
+
+if (pickupDate) pickupDate.addEventListener("change", () => {
+  pickupDateChips.querySelectorAll(".quick-chip").forEach(c => c.classList.remove("active"));
+  updatePickupPreview();
+});
+if (pickupNote) pickupNote.addEventListener("input", updatePickupPreview);
+
+if (pickupForm) {
+  pickupForm.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const submitBtn = pickupForm.querySelector("button[type='submit']");
+    const text = buildPickupMessage();
+
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sending...';
+    const sent = await sendChatMessage(text);
+    submitBtn.disabled = false;
+    submitBtn.innerHTML = '<i class="fas fa-paper-plane"></i> Send Proposal';
+
+    if (sent) {
+      showToast("Pickup proposal sent!", "success");
+      pickupModal.style.display = "none";
+      pickupForm.reset();
+      pickupPreview.style.display = "none";
+      pickupDateChips.querySelectorAll(".quick-chip").forEach(c => c.classList.remove("active"));
+      pickupSlotChips.querySelectorAll(".quick-chip").forEach(c => c.classList.remove("active"));
+    }
+  });
+}
+
+// ======================================
+// REPORT LISTING
+// Assumes a POST /api/products/:id/report endpoint. If your backend doesn't
+// have this route yet, this will fail gracefully with an error toast rather
+// than falsely claiming success — add the route to make it fully functional.
+// ======================================
+if (reportListingBtn) {
+  reportListingBtn.addEventListener("click", () => {
+    if (!localStorage.getItem("unithrift_session_token")) {
+      return showToast("Please login to report a listing.", "warning");
+    }
+    reportModal.style.display = "flex";
+  });
+}
+if (closeReportModal) closeReportModal.addEventListener("click", () => reportModal.style.display = "none");
+if (reportForm) {
+  reportForm.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const reason = document.getElementById("reportReason").value;
+    const details = document.getElementById("reportDetails").value.trim();
+    const submitBtn = reportForm.querySelector("button[type='submit']");
+
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Submitting...';
+
+    try {
+      const res = await authFetch(`/api/products/${productId}/report`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reason, details })
+      });
+      const result = await res.json().catch(() => ({ success: false }));
+
+      if (result.success) {
+        showToast("Report submitted. Thank you for keeping campus trading safe.", "success");
+        reportModal.style.display = "none";
+        reportForm.reset();
+      } else {
+        showToast(result.message || "Couldn't submit the report. Please try again.", "error");
+      }
+    } catch (err) {
+      console.error("Report submission failed:", err);
+      showToast("Couldn't submit the report. Please try again.", "error");
+    } finally {
+      submitBtn.disabled = false;
+      submitBtn.innerHTML = '<i class="fas fa-paper-plane"></i> Submit Report';
+    }
+  });
+}
+
+// ======================================
+// STICKY MOBILE ACTION BAR
+// ======================================
+if (mobileAddCartBtn) {
+  mobileAddCartBtn.addEventListener("click", () => {
+    const cartBtn = document.getElementById("addCartBtn");
+    if (cartBtn && !cartBtn.disabled) cartBtn.click();
+  });
+}
+
+// ======================================
+// RELATED LISTINGS / MORE FROM THIS SELLER
+// Both reuse GET /api/products (the same full listing the marketplace page
+// uses) and filter client-side, rather than assuming dedicated
+// category/seller-filtered endpoints exist.
+// ======================================
+function renderProductStrip(container, products, emptyParentBlock) {
+  if (!container) return;
+  if (!products || products.length === 0) {
+    if (emptyParentBlock) emptyParentBlock.style.display = "none";
+    return;
+  }
+
+  container.innerHTML = products.map(p => `
+    <a class="related-card" href="/product.html?id=${p.id}">
+      <img src="${p.image_url || 'https://placehold.co/300x200?text=UniThrift'}" alt="${escapeHtml(p.title)}">
+      <div class="related-card-body">
+        <div class="related-card-title">${escapeHtml(p.title)}</div>
+        <div class="related-card-price">₹${Number(p.price).toLocaleString('en-IN')}</div>
+      </div>
+    </a>
+  `).join("");
+
+  if (emptyParentBlock) emptyParentBlock.style.display = "block";
+}
+
+function escapeHtml(str) {
+  if (str === null || str === undefined) return "";
+  return String(str)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
+async function loadRelatedListings(category, excludeId) {
+  if (!category || !relatedSection || !relatedStrip) return;
+  try {
+    const response = await fetch('/api/products');
+    const result = await response.json();
+    if (!result.success) return;
+
+    const related = (result.products || [])
+      .filter(p => p.category === category && String(p.id) !== String(excludeId) && !p.is_sold)
+      .slice(0, 6);
+
+    if (related.length > 0) {
+      renderProductStrip(relatedStrip, related);
+      relatedSection.style.display = "block";
+    }
+  } catch (err) {
+    console.error("Failed to load related listings:", err);
+  }
+}
+
+async function loadMoreFromSeller(sellerId, excludeId) {
+  if (!sellerId || !moreFromSellerBlock || !moreFromSellerStrip) return;
+  try {
+    const response = await fetch('/api/products');
+    const result = await response.json();
+    if (!result.success) return;
+
+    const sellerListings = (result.products || [])
+      .filter(p => String(p.seller_id || p.user_id) === String(sellerId) && String(p.id) !== String(excludeId) && !p.is_sold)
+      .slice(0, 6);
+
+    renderProductStrip(moreFromSellerStrip, sellerListings, moreFromSellerBlock);
+  } catch (err) {
+    console.error("Failed to load more listings from seller:", err);
+  }
+}
+
+// ======================================
+// RECENTLY VIEWED (client-side only, via localStorage)
+// ======================================
+function getRecentlyViewed() {
+  try { return JSON.parse(localStorage.getItem("recently_viewed")) || []; }
+  catch { return []; }
+}
+
+function addToRecentlyViewed(product, imageUrl) {
+  if (!product) return;
+  let list = getRecentlyViewed().filter(p => String(p.id) !== String(product.id));
+  list.unshift({
+    id: product.id,
+    title: product.title,
+    price: product.price,
+    image_url: imageUrl || ""
+  });
+  list = list.slice(0, 10);
+  localStorage.setItem("recently_viewed", JSON.stringify(list));
+}
+
+function renderRecentlyViewed(excludeId) {
+  if (!recentlyViewedSection || !recentlyViewedStrip) return;
+  const list = getRecentlyViewed().filter(p => String(p.id) !== String(excludeId)).slice(0, 8);
+  if (list.length === 0) return;
+
+  renderProductStrip(recentlyViewedStrip, list);
+  recentlyViewedSection.style.display = "block";
 }
 
 if (typeof productId !== 'undefined' && productId) {

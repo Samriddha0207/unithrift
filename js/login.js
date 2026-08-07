@@ -130,10 +130,18 @@ let pendingSignupUsername = null; // carried from signup -> prefills the login f
 
 // Shows exactly one of the three forms and adjusts the surrounding chrome
 // (title, toggle link, social login) to match.
+function playEnterAnimation(form) {
+    if (!form) return;
+    form.classList.remove("form-enter");
+    void form.offsetWidth; // reflow, restarts the CSS animation
+    form.classList.add("form-enter");
+}
+
 function showForm(name) {
     if (loginForm)  loginForm.style.display  = name === "login"  ? "block" : "none";
     if (signupForm) signupForm.style.display = name === "signup" ? "block" : "none";
     if (otpForm)    otpForm.style.display    = name === "otp"    ? "block" : "none";
+    playEnterAnimation({ login: loginForm, signup: signupForm, otp: otpForm }[name]);
 
     const hideChrome = name === "otp";
     if (socialDivider)    socialDivider.style.display    = hideChrome ? "none" : "flex";
@@ -163,21 +171,21 @@ if (toggleBtn) {
 // ======================================
 // PASSWORD VISIBILITY TOGGLES
 // ======================================
-const toggleLoginPw = document.getElementById("toggleLoginPw");
-if (toggleLoginPw) {
-    toggleLoginPw.addEventListener("click", () => {
-        const pw = document.getElementById("loginPassword");
-        if (pw) pw.type = pw.type === "password" ? "text" : "password";
+function wirePasswordToggle(btnId, inputId) {
+    const btn = document.getElementById(btnId);
+    const pw  = document.getElementById(inputId);
+    if (!btn || !pw) return;
+    btn.addEventListener("click", () => {
+        const showing = pw.type === "password";
+        pw.type = showing ? "text" : "password";
+        btn.setAttribute("aria-label", showing ? "Hide password" : "Show password");
+        const icon = btn.querySelector("i");
+        if (icon) icon.className = showing ? "fa-regular fa-eye-slash" : "fa-regular fa-eye";
     });
 }
 
-const toggleSignupPw = document.getElementById("toggleSignupPw");
-if (toggleSignupPw) {
-    toggleSignupPw.addEventListener("click", () => {
-        const pw = document.getElementById("signupPassword");
-        if (pw) pw.type = pw.type === "password" ? "text" : "password";
-    });
-}
+wirePasswordToggle("toggleLoginPw", "loginPassword");
+wirePasswordToggle("toggleSignupPw", "signupPassword");
 
 // ======================================
 // HELPERS
@@ -187,25 +195,35 @@ function showError(elementId, message) {
     if (el) {
         el.textContent = message;
         el.style.display = "block";
-        el.style.color = "#dc2626";
+        el.classList.remove("shake-in");
+        void el.offsetWidth; // reflow, restarts the CSS animation
+        el.classList.add("shake-in");
     }
 }
 
 function showStatus(message, isSuccess = true) {
     if (!statusMsg) return;
     statusMsg.textContent = message;
-    statusMsg.style.color = isSuccess ? "#16a34a" : "#dc2626";
+    statusMsg.style.color = isSuccess ? "var(--success)" : "var(--danger)";
     statusMsg.style.display = "block";
+    statusMsg.classList.remove("show");
+    void statusMsg.offsetWidth; // reflow, restarts the CSS animation
+    statusMsg.classList.add("show");
 }
 
 function clearMessages() {
     const loginErr = document.getElementById("loginError");
     const signupErr = document.getElementById("signupError");
     const otpErr = document.getElementById("otpError");
-    if (loginErr) loginErr.style.display  = "none";
-    if (signupErr) signupErr.style.display = "none";
-    if (otpErr) otpErr.style.display = "none";
-    if (statusMsg) statusMsg.style.display = "none";
+    [loginErr, signupErr, otpErr].forEach(el => {
+        if (!el) return;
+        el.style.display = "none";
+        el.classList.remove("shake-in");
+    });
+    if (statusMsg) {
+        statusMsg.style.display = "none";
+        statusMsg.classList.remove("show");
+    }
 }
 
 function setButtonLoading(btnId, loading, defaultText) {

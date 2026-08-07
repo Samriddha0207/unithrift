@@ -8,14 +8,16 @@
 
     <link rel="stylesheet" href="/css/product.css">
 
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap"
+    <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&family=Inter:wght@400;500;600;700;800&display=swap"
         rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 </head>
 
-<body>
+<body class="dark-theme">
 
     <nav class="navbar">
         <div class="logo">
+            <span class="logo-mark"><i class="fas fa-bag-shopping"></i></span>
             UniThrift
         </div>
 
@@ -23,6 +25,10 @@
             <a href="/marketplace">Marketplace</a>
             <a href="/sell">Sell Item</a>
             <a href="/profile">Profile</a>
+            <button class="theme-toggle-link" id="navbarThemeToggle" type="button">
+                <i class="fas fa-sun"></i><i class="fas fa-moon"></i>
+                <span>Theme</span>
+            </button>
         </div>
     </nav>
 
@@ -30,10 +36,15 @@
 
         <!-- LEFT : IMAGES -->
         <section class="gallery-section">
-            <img id="mainImage"
-                 class="main-image"
-                 src=""
-                 alt="Product Image">
+            <div class="main-image-wrap">
+                <img id="mainImage"
+                     class="main-image skeleton"
+                     src=""
+                     alt="Product Image">
+                <button id="zoomBtn" class="zoom-btn" type="button" aria-label="View full size image">
+                    <i class="fas fa-expand"></i>
+                </button>
+            </div>
 
             <div id="thumbnailContainer"
                  class="thumbnail-container"></div>
@@ -42,13 +53,29 @@
         <!-- RIGHT : PRODUCT DETAILS -->
         <section class="details-section">
 
-            <h1 id="productTitle">Loading...</h1>
+            <div class="title-row">
+                <h1 id="productTitle" class="skeleton">Loading product...</h1>
+                <button id="wishlistBtn" class="wishlist-btn" aria-label="Save to wishlist">
+                    <i class="fas fa-heart"></i>
+                </button>
+            </div>
+
+            <div class="subline-row">
+                <button id="copyLinkBtn" class="copy-link-btn" type="button">
+                    <i class="fas fa-link"></i> Copy Link
+                </button>
+                <span id="listedAgo" class="listed-ago" style="display:none;">
+                    <i class="fas fa-clock"></i> <span></span>
+                </span>
+            </div>
 
             <div id="productPrice"
-                 class="price"></div>
+                 class="price skeleton">₹0000</div>
 
-            <div id="productCondition"
-                 class="condition"></div>
+            <div class="meta-row">
+                <div id="productCondition"
+                     class="condition"></div>
+            </div>
 
             <div class="info-card">
 
@@ -64,12 +91,28 @@
                     <span id="paymentMethods"></span>
                 </p>
 
+                <p id="pickupPointRow" style="display:none;">
+                    <strong>Pickup Point:</strong>
+                    <span id="pickupPointText"></span>
+                    <button id="togglePickupMapBtn" type="button" class="map-toggle-btn">
+                        <i class="fas fa-map-location-dot"></i> View on map
+                    </button>
+                </p>
+
+                <div id="pickupMapWrap" class="pickup-map-wrap" style="display:none;">
+                    <iframe id="pickupMapFrame" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>
+                </div>
+
             </div>
 
             <div class="action-buttons">
 
                 <button id="addCartBtn">
                     Add To Cart
+                </button>
+
+                <button id="makeOfferBtn">
+                    <i class="fas fa-hand-holding-dollar"></i> Make an Offer
                 </button>
 
                 <button id="chatWithSellerBtn"
@@ -81,6 +124,15 @@
                     Contact Seller
                 </button>
 
+            </div>
+
+            <div class="secondary-actions">
+                <button id="proposePickupBtn" class="text-action-btn" type="button">
+                    <i class="fas fa-calendar-check"></i> Propose a pickup time
+                </button>
+                <button id="reportListingBtn" class="text-action-btn text-action-btn--danger" type="button">
+                    <i class="fas fa-flag"></i> Report listing
+                </button>
             </div>
 
         </section>
@@ -104,6 +156,11 @@
         <h2>Seller Information</h2>
 
         <div id="sellerInfo"></div>
+
+        <div id="moreFromSellerBlock" class="related-strip-block" style="display:none;">
+            <h3><i class="fas fa-store"></i> More from this seller</h3>
+            <div id="moreFromSellerStrip" class="related-strip"></div>
+        </div>
 
     </section>
 
@@ -133,11 +190,23 @@
 
     </section>
 
+    <!-- RELATED LISTINGS -->
+
+    <section class="related-section" id="relatedSection" style="display:none;">
+
+        <h2><i class="fas fa-shapes"></i> Similar Listings</h2>
+
+        <div id="relatedStrip" class="related-strip"></div>
+
+    </section>
+
     <!-- REVIEWS -->
 
     <section class="reviews-section">
 
         <h2>Reviews</h2>
+
+        <div id="reviewsSummary" class="reviews-summary" style="display:none;"></div>
 
         <div id="reviewsContainer"></div>
 
@@ -197,6 +266,16 @@
 
     </section>
 
+    <!-- RECENTLY VIEWED -->
+
+    <section class="recently-viewed-section" id="recentlyViewedSection" style="display:none;">
+
+        <h2><i class="fas fa-clock-rotate-left"></i> Recently Viewed</h2>
+
+        <div id="recentlyViewedStrip" class="related-strip"></div>
+
+    </section>
+
     <!-- CONTACT MODAL -->
 
     <div id="contactModal"
@@ -205,7 +284,10 @@
         <div class="modal-content">
 
             <span id="closeModal"
-                  class="modal-close">
+                  class="modal-close"
+                  role="button"
+                  tabindex="0"
+                  aria-label="Close">
                 &times;
             </span>
 
@@ -217,6 +299,145 @@
 
         </div>
 
+    </div>
+
+    <!-- MAKE AN OFFER MODAL -->
+
+    <div id="offerModal" class="modal-overlay">
+        <div class="modal-content modal-content--wide">
+            <span id="closeOfferModal" class="modal-close" role="button" tabindex="0" aria-label="Close">&times;</span>
+            <h2><i class="fas fa-hand-holding-dollar"></i> Make an Offer</h2>
+            <hr class="modal-divider">
+
+            <div class="modal-product-context">
+                <img id="offerProductImage" src="" alt="">
+                <div class="modal-product-context-text">
+                    <span id="offerProductTitle"></span>
+                    <span class="modal-product-context-price">Asking <strong id="offerAskingPrice"></strong></span>
+                </div>
+            </div>
+
+            <form id="offerForm">
+                <label for="offerAmount">Your Offer (₹)</label>
+                <input type="number" id="offerAmount" min="1" placeholder="e.g. 350" required>
+
+                <div class="quick-chip-row" id="offerQuickChips">
+                    <button type="button" class="quick-chip" data-pct="0.9">-10%</button>
+                    <button type="button" class="quick-chip" data-pct="0.8">-20%</button>
+                    <button type="button" class="quick-chip" data-pct="0.7">-30%</button>
+                    <button type="button" class="quick-chip" data-pct="1">Asking price</button>
+                </div>
+
+                <p id="offerSavingsHint" class="offer-savings-hint" style="display:none;"></p>
+
+                <label for="offerMessage">Message (optional)</label>
+                <textarea id="offerMessage" rows="3" maxlength="300" placeholder="e.g. Can pick up today, cash in hand!"></textarea>
+                <span id="offerMessageCount" class="char-count">0/300</span>
+
+                <div class="modal-preview" id="offerPreview" style="display:none;">
+                    <span class="modal-preview-label"><i class="fas fa-eye"></i> Message preview</span>
+                    <p id="offerPreviewText"></p>
+                </div>
+
+                <button type="submit"><i class="fas fa-paper-plane"></i> Send Offer</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- PROPOSE PICKUP TIME MODAL -->
+
+    <div id="pickupModal" class="modal-overlay">
+        <div class="modal-content modal-content--wide">
+            <span id="closePickupModal" class="modal-close" role="button" tabindex="0" aria-label="Close">&times;</span>
+            <h2><i class="fas fa-calendar-check"></i> Propose a Pickup Time</h2>
+            <hr class="modal-divider">
+
+            <div class="modal-product-context">
+                <img id="pickupProductImage" src="" alt="">
+                <div class="modal-product-context-text">
+                    <span id="pickupProductTitle"></span>
+                    <span id="pickupProductLocation" class="modal-product-context-location" style="display:none;">
+                        <i class="fas fa-location-dot"></i> <span></span>
+                    </span>
+                </div>
+            </div>
+
+            <form id="pickupForm">
+                <label for="pickupDate">Date</label>
+
+                <div class="quick-chip-row" id="pickupDateChips">
+                    <button type="button" class="quick-chip" data-days="0">Today</button>
+                    <button type="button" class="quick-chip" data-days="1">Tomorrow</button>
+                    <button type="button" class="quick-chip" data-days="6">This Weekend</button>
+                </div>
+
+                <input type="date" id="pickupDate" required>
+
+                <label>Preferred Time</label>
+                <div class="quick-chip-row quick-chip-row--slots" id="pickupSlotChips">
+                    <button type="button" class="quick-chip" data-slot="Morning (8–11 AM)">🌅 Morning<br><span>8–11 AM</span></button>
+                    <button type="button" class="quick-chip" data-slot="Afternoon (12–4 PM)">☀️ Afternoon<br><span>12–4 PM</span></button>
+                    <button type="button" class="quick-chip" data-slot="Evening (5–8 PM)">🌆 Evening<br><span>5–8 PM</span></button>
+                    <button type="button" class="quick-chip" data-slot="Night (8–10 PM)">🌙 Night<br><span>8–10 PM</span></button>
+                </div>
+                <select id="pickupSlot" required style="display:none;">
+                    <option value="">Select a time</option>
+                    <option value="Morning (8–11 AM)">Morning (8–11 AM)</option>
+                    <option value="Afternoon (12–4 PM)">Afternoon (12–4 PM)</option>
+                    <option value="Evening (5–8 PM)">Evening (5–8 PM)</option>
+                    <option value="Night (8–10 PM)">Night (8–10 PM)</option>
+                </select>
+
+                <label for="pickupNote">Anything else? (optional)</label>
+                <textarea id="pickupNote" rows="2" maxlength="200" placeholder="e.g. I'll be wearing a red jacket"></textarea>
+
+                <div class="modal-preview" id="pickupPreview" style="display:none;">
+                    <span class="modal-preview-label"><i class="fas fa-eye"></i> Message preview</span>
+                    <p id="pickupPreviewText"></p>
+                </div>
+
+                <button type="submit"><i class="fas fa-paper-plane"></i> Send Proposal</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- REPORT LISTING MODAL -->
+
+    <div id="reportModal" class="modal-overlay">
+        <div class="modal-content">
+            <span id="closeReportModal" class="modal-close" role="button" tabindex="0" aria-label="Close">&times;</span>
+            <h2><i class="fas fa-flag"></i> Report Listing</h2>
+            <hr class="modal-divider">
+            <form id="reportForm">
+                <label for="reportReason">Reason</label>
+                <select id="reportReason" required>
+                    <option value="">Select a reason</option>
+                    <option>Suspicious or scam listing</option>
+                    <option>Prohibited or unsafe item</option>
+                    <option>Misleading price or description</option>
+                    <option>Offensive content</option>
+                    <option>Other</option>
+                </select>
+                <label for="reportDetails">Additional details (optional)</label>
+                <textarea id="reportDetails" rows="3" placeholder="Tell us more..."></textarea>
+                <button type="submit"><i class="fas fa-paper-plane"></i> Submit Report</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- IMAGE LIGHTBOX -->
+
+    <div id="lightbox" class="lightbox-overlay">
+        <button id="closeLightbox" class="lightbox-close" type="button" aria-label="Close full size image">
+            <i class="fas fa-xmark"></i>
+        </button>
+        <button id="lightboxPrev" class="lightbox-nav lightbox-nav--prev" type="button" aria-label="Previous image">
+            <i class="fas fa-chevron-left"></i>
+        </button>
+        <img id="lightboxImage" src="" alt="Product full size">
+        <button id="lightboxNext" class="lightbox-nav lightbox-nav--next" type="button" aria-label="Next image">
+            <i class="fas fa-chevron-right"></i>
+        </button>
     </div>
 
     <!-- CHAT POPUP -->
@@ -246,12 +467,14 @@
                           style="display:none;">
                         <i class="fa-solid fa-circle-check"></i> Verified
                     </span>
+                    <span id="chatResponseBadge" class="response-badge" style="display:none;"></span>
                 </div>
 
             </div>
 
             <button id="closeChatBtn"
-                    class="close-chat-btn">
+                    class="close-chat-btn"
+                    aria-label="Close chat">
                 &times;
             </button>
 
@@ -308,6 +531,15 @@
 
     </div>
 
+    <!-- STICKY MOBILE ACTION BAR -->
+    <div id="mobileActionBar" class="mobile-action-bar">
+        <div class="mobile-action-price">
+            <span class="mobile-action-label">Price</span>
+            <span id="mobileActionPrice">₹0</span>
+        </div>
+        <button id="mobileAddCartBtn" type="button">Add To Cart</button>
+    </div>
+
     <footer>
 
         <p>
@@ -331,9 +563,6 @@
             </div>
         </div>
     </div>
-
-    <link rel="stylesheet"
-        href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
 

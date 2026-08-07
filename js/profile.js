@@ -20,6 +20,14 @@ const loadingOverlay      = document.getElementById("loadingOverlay");
 const avatarImg           = document.getElementById("userAvatar");
 const navAvatarImg        = document.getElementById("navAvatarImg");
 const avatarUpload        = document.getElementById("avatarUpload");
+const copyProfileLinkBtn  = document.getElementById("copyProfileLinkBtn");
+const verificationProgress = document.getElementById("verificationProgress");
+const toastContainer      = document.getElementById("toastContainer");
+const confirmModal        = document.getElementById("confirmModal");
+const confirmModalTitle   = document.getElementById("confirmModalTitle");
+const confirmModalMessage = document.getElementById("confirmModalMessage");
+const confirmModalOk      = document.getElementById("confirmModalOk");
+const confirmModalCancel  = document.getElementById("confirmModalCancel");
 
 // ======================================
 // GLOBAL STATE
@@ -31,6 +39,85 @@ let currentUser = null;
 // ======================================
 function showLoading() { if (loadingOverlay) loadingOverlay.style.display = "flex"; }
 function hideLoading() { if (loadingOverlay) loadingOverlay.style.display = "none"; }
+
+// ======================================
+// TOASTS
+// ======================================
+function showToast(message, type = "info", duration = 3500) {
+    if (!toastContainer) return;
+
+    const icons = {
+        success: "fa-check",
+        error: "fa-xmark",
+        warning: "fa-exclamation",
+        info: "fa-info"
+    };
+
+    const toast = document.createElement("div");
+    toast.className = `toast toast--${type}`;
+    toast.innerHTML = `
+        <span class="toast-icon"><i class="fas ${icons[type] || icons.info}"></i></span>
+        <span class="toast-message"></span>
+        <button class="toast-close" aria-label="Dismiss"><i class="fas fa-xmark"></i></button>
+    `;
+    // textContent, not innerHTML, so a server-derived message can never inject markup
+    toast.querySelector(".toast-message").textContent = message;
+
+    const remove = () => {
+        if (!toast.isConnected) return;
+        toast.classList.add("toast--leaving");
+        toast.addEventListener("animationend", () => toast.remove(), { once: true });
+    };
+
+    let timer = setTimeout(remove, duration);
+    toast.addEventListener("mouseenter", () => clearTimeout(timer));
+    toast.addEventListener("mouseleave", () => { timer = setTimeout(remove, 1200); });
+    toast.querySelector(".toast-close").addEventListener("click", remove);
+
+    toastContainer.appendChild(toast);
+}
+
+// ======================================
+// CONFIRMATION MODAL
+// ======================================
+function showConfirm(message, title = "Are you sure?") {
+    if (!confirmModal) return Promise.resolve(window.confirm(message));
+
+    return new Promise(resolve => {
+        confirmModalTitle.textContent = title;
+        confirmModalMessage.textContent = message;
+        confirmModal.classList.add("open");
+
+        const cleanup = (result) => {
+            confirmModal.classList.remove("open");
+            confirmModalOk.removeEventListener("click", onOk);
+            confirmModalCancel.removeEventListener("click", onCancel);
+            confirmModal.removeEventListener("click", onOverlay);
+            document.removeEventListener("keydown", onKeydown);
+            resolve(result);
+        };
+
+        const onOk = () => cleanup(true);
+        const onCancel = () => cleanup(false);
+        const onOverlay = (e) => { if (e.target === confirmModal) cleanup(false); };
+        const onKeydown = (e) => { if (e.key === "Escape") cleanup(false); };
+
+        confirmModalOk.addEventListener("click", onOk);
+        confirmModalCancel.addEventListener("click", onCancel);
+        confirmModal.addEventListener("click", onOverlay);
+        document.addEventListener("keydown", onKeydown);
+    });
+}
+
+function escapeHtml(str) {
+    if (str === null || str === undefined) return "";
+    return String(str)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+}
 
 // ======================================
 // THEME ENGINE
@@ -108,7 +195,7 @@ async function initializeProfile() {
 
     } catch (err) {
         console.error("Init error:", err);
-        alert("Failed to load profile. Please refresh.");
+        showToast("Failed to load profile. Please refresh.", "error");
     } finally {
         hideLoading();
     }
@@ -160,25 +247,25 @@ function renderDocCard(label, url, type) {
     if (!url) return "";
     const isPdf  = /\.pdf($|\?)/i.test(url);
     const thumb  = isPdf
-        ? `<div style="width:44px;height:44px;border-radius:8px;background:rgba(124,92,255,0.12);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-               <i class="fas fa-file-pdf" style="color:var(--muted,#999);font-size:1.1rem;"></i>
+        ? `<div style="width:44px;height:44px;border-radius:8px;background:rgba(var(--accent-rgb),0.14);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+               <i class="fas fa-file-pdf" style="color:var(--secondary,#999);font-size:1.1rem;"></i>
            </div>`
         : `<img src="${url}" alt="${label}" style="width:44px;height:44px;border-radius:8px;object-fit:cover;flex-shrink:0;">`;
 
     return `
         <div class="ver-doc-card" data-doctype="${type}"
-             style="display:flex;align-items:center;gap:12px;padding:10px;border:1px solid rgba(255,255,255,0.08);border-radius:10px;">
+             style="display:flex;align-items:center;gap:12px;padding:10px;border:1px solid var(--border);border-radius:10px;">
             <a href="${url}" target="_blank" rel="noopener" style="flex-shrink:0;line-height:0;">${thumb}</a>
             <div style="flex:1;min-width:0;">
                 <p style="margin:0;font-size:0.85rem;font-weight:600;">${label}</p>
-                <a href="${url}" target="_blank" rel="noopener" style="font-size:0.75rem;color:var(--muted,#999);text-decoration:none;">View document</a>
+                <a href="${url}" target="_blank" rel="noopener" style="font-size:0.75rem;color:var(--secondary,#999);text-decoration:none;">View document</a>
             </div>
             <button type="button" class="doc-replace-btn" data-doctype="${type}" title="Replace"
                     style="background:none;border:none;cursor:pointer;color:inherit;opacity:0.75;padding:6px;">
                 <i class="fas fa-rotate"></i>
             </button>
             <button type="button" class="doc-delete-btn" data-doctype="${type}" title="Delete"
-                    style="background:none;border:none;cursor:pointer;color:#ff6b6b;opacity:0.85;padding:6px;">
+                    style="background:none;border:none;cursor:pointer;color:var(--danger);opacity:0.85;padding:6px;">
                 <i class="fas fa-trash"></i>
             </button>
         </div>
@@ -191,10 +278,27 @@ function renderVerificationSummary(profile) {
     const studentVerified = profile.student_verified;
     const sellerVerified  = profile.seller_verified;
 
+    // Verification progress: profile details filled in, student verified, seller verified
+    if (verificationProgress) {
+        const profileComplete = !!(profile.college_name && profile.location_name && profile.address);
+        const steps = [profileComplete, !!studentVerified, !!sellerVerified];
+        const done = steps.filter(Boolean).length;
+        const pct = Math.round((done / steps.length) * 100);
+        verificationProgress.innerHTML = `
+            <div class="ver-progress-label">
+                <span>Verification progress</span>
+                <strong>${done}/${steps.length} steps complete</strong>
+            </div>
+            <div class="ver-progress-track">
+                <div class="ver-progress-fill" style="width:${pct}%;"></div>
+            </div>
+        `;
+    }
+
     const studentIcon  = studentVerified  ? "fa-check-circle" : "fa-clock";
     const sellerIcon   = sellerVerified   ? "fa-check-circle" : "fa-circle-xmark";
     const studentColor = studentVerified  ? "var(--success)"  : "var(--warning)";
-    const sellerColor  = sellerVerified   ? "var(--success)"  : "var(--muted)";
+    const sellerColor  = sellerVerified   ? "var(--success)"  : "var(--secondary)";
     const sellerDocsSubmitted = profile.pan_url && profile.payment_qr_url;
     const studentText  = studentVerified  ? "Verified"        : (profile.college_id_url ? "Pending review" : "Not submitted");
     const sellerText   = sellerVerified   ? "Verified"        : (sellerDocsSubmitted ? "Pending review" : "Not submitted");
@@ -266,7 +370,11 @@ if (verificationSummary) {
         if (deleteBtn) {
             const type = deleteBtn.dataset.doctype;
             const labels = { student: "College ID", pan: "PAN Card", qr: "Payment QR" };
-            if (!confirm(`Delete your ${labels[type] || "document"}? You'll need to re-upload it for verification.`)) return;
+            const ok = await showConfirm(
+                `Delete your ${labels[type] || "document"}? You'll need to re-upload it for verification.`,
+                "Delete document?"
+            );
+            if (!ok) return;
 
             const token = localStorage.getItem("unithrift_session_token");
             if (!token) return;
@@ -280,12 +388,13 @@ if (verificationSummary) {
                 if (result.success) {
                     initializeProfile();
                 } else {
-                    alert(result.message || "Failed to delete document.");
+                    showToast(result.message || "Failed to delete document.", "error");
                     deleteBtn.disabled = false;
                     deleteBtn.innerHTML = '<i class="fas fa-trash"></i>';
                 }
             } catch (err) {
                 console.error("Delete document failed:", err);
+                showToast("Something went wrong. Please try again.", "error");
                 deleteBtn.disabled = false;
                 deleteBtn.innerHTML = '<i class="fas fa-trash"></i>';
             }
@@ -369,7 +478,7 @@ if (verifyStudentBtn) {
     verifyStudentBtn.addEventListener("click", async () => {
         const file  = document.getElementById("collegeId")?.files[0];
         const token = localStorage.getItem("unithrift_session_token");
-        if (!file || !token) { alert("Please select a College ID file first."); return; }
+        if (!file || !token) { showToast("Please select a College ID file first.", "warning"); return; }
 
         const origText = verifyStudentBtn.innerHTML;
         verifyStudentBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Uploading...';
@@ -390,7 +499,7 @@ if (verifyStudentBtn) {
                 initializeProfile();
             } else {
                 verifyStudentBtn.innerHTML = '<i class="fas fa-times"></i> Verification Failed';
-                alert(result.message || "Verification failed.");
+                showToast(result.message || "Verification failed.", "error");
             }
         } catch (err) {
             verifyStudentBtn.innerHTML = '<i class="fas fa-times"></i> Error';
@@ -413,7 +522,7 @@ if (sellerVerifyBtn) {
         const qrFile  = document.getElementById("paymentQr")?.files[0];
         const token   = localStorage.getItem("unithrift_session_token");
         if (!panFile || !qrFile || !token) {
-            alert("Please select both PAN Card and Payment QR files.");
+            showToast("Please select both PAN Card and Payment QR files.", "warning");
             return;
         }
 
@@ -454,6 +563,37 @@ const cartBtn = document.getElementById("cartBtn");
 if (cartBtn) cartBtn.addEventListener("click", () => { window.location.href = "/marketplace"; });
 
 // ======================================
+// COPY PROFILE LINK
+// ======================================
+if (copyProfileLinkBtn) {
+    copyProfileLinkBtn.addEventListener("click", async () => {
+        const link = window.location.href.split("#")[0];
+        try {
+            await navigator.clipboard.writeText(link);
+        } catch (err) {
+            // Clipboard API unavailable (older browser / non-HTTPS) — fall back to a temporary input
+            const temp = document.createElement("textarea");
+            temp.value = link;
+            temp.style.position = "fixed";
+            temp.style.opacity = "0";
+            document.body.appendChild(temp);
+            temp.select();
+            document.execCommand("copy");
+            document.body.removeChild(temp);
+        }
+
+        showToast("Profile link copied!", "success");
+        const origHTML = copyProfileLinkBtn.innerHTML;
+        copyProfileLinkBtn.innerHTML = '<i class="fas fa-check"></i> Copied!';
+        copyProfileLinkBtn.classList.add("copied");
+        setTimeout(() => {
+            copyProfileLinkBtn.innerHTML = origHTML;
+            copyProfileLinkBtn.classList.remove("copied");
+        }, 2000);
+    });
+}
+
+// ======================================
 // HIDDEN ADMIN ENTRY (Ctrl+F10)
 // ======================================
 document.addEventListener("keydown", async (e) => {
@@ -483,7 +623,7 @@ async function loadListings() {
 
         if (!result.success || !result.products?.length) {
             listingContainer.innerHTML = `
-                <div style="grid-column:1/-1; text-align:center; padding:48px 20px; color:var(--muted);">
+                <div style="grid-column:1/-1; text-align:center; padding:48px 20px; color:var(--secondary);">
                     <i class="fas fa-store" style="font-size:2rem; display:block; margin-bottom:12px; opacity:0.4;"></i>
                     <p style="font-size:0.9rem;">No listings yet.</p>
                     <button class="btn btn-primary" style="margin-top:16px;" onclick="window.location.href='/sell'">
@@ -503,7 +643,7 @@ async function loadListings() {
         });
     } catch (err) {
         console.error("Failed to load listings:", err);
-        listingContainer.innerHTML = `<p style="color:var(--muted); padding:20px;">Failed to load listings.</p>`;
+        listingContainer.innerHTML = `<p style="color:var(--secondary); padding:20px;">Failed to load listings.</p>`;
     }
 }
 
@@ -519,7 +659,7 @@ function renderListingCard(item) {
 
     const imgTag = item.image_url
         ? `<img src="${item.image_url}" alt="${title}" loading="lazy">`
-        : `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:2rem;"><i class="fas fa-image"></i></div>`;
+        : `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:var(--secondary);font-size:2rem;"><i class="fas fa-image"></i></div>`;
 
     const soldBadge = isSold ? `<span class="listing-sold-badge">Sold</span>` : "";
     const deleteBtn = `<button class="listing-delete-btn" data-id="${item.id}" title="Delete listing"><i class="fas fa-trash"></i></button>`;
@@ -558,7 +698,8 @@ if (listingContainer) {
         const id = deleteBtn.getAttribute("data-id");
         if (!id) return;
 
-        if (!confirm("Delete this listing? This cannot be undone.")) return;
+        const ok = await showConfirm("Delete this listing? This cannot be undone.", "Delete listing?");
+        if (!ok) return;
 
         const originalHTML = deleteBtn.innerHTML;
         deleteBtn.disabled = true;
@@ -569,15 +710,16 @@ if (listingContainer) {
             const result = await res.json().catch(() => ({ success: false }));
 
             if (result.success) {
+                showToast("Listing deleted", "success");
                 loadListings();
             } else {
-                alert(result.message || "Failed to delete listing.");
+                showToast(result.message || "Failed to delete listing.", "error");
                 deleteBtn.disabled = false;
                 deleteBtn.innerHTML = originalHTML;
             }
         } catch (err) {
             console.error("Failed to delete listing:", err);
-            alert("Something went wrong. Please try again.");
+            showToast("Something went wrong. Please try again.", "error");
             deleteBtn.disabled = false;
             deleteBtn.innerHTML = originalHTML;
         }
@@ -602,9 +744,9 @@ document.querySelectorAll(".file-input").forEach(input => {
     dropdown.className = "geo-autocomplete-dropdown";
     Object.assign(dropdown.style, {
         position: "absolute", top: "100%", left: "0", right: "0",
-        background: "#161826", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "8px",
+        background: "var(--card)", border: "1px solid var(--border)", borderRadius: "8px",
         marginTop: "6px", maxHeight: "220px", overflowY: "auto",
-        boxShadow: "0 10px 24px rgba(0,0,0,0.4)", zIndex: "999", display: "none"
+        boxShadow: "0 10px 24px var(--shadow)", zIndex: "999", display: "none"
     });
     locationInput.parentElement.appendChild(dropdown);
 
@@ -614,7 +756,7 @@ document.querySelectorAll(".file-input").forEach(input => {
 
     function highlight(index) {
         dropdown.querySelectorAll(".geo-suggestion").forEach(el => {
-            el.style.background = Number(el.dataset.index) === index ? "rgba(255,255,255,0.1)" : "transparent";
+            el.style.background = Number(el.dataset.index) === index ? "rgba(var(--accent-rgb), 0.15)" : "transparent";
         });
     }
 
@@ -633,7 +775,7 @@ document.querySelectorAll(".file-input").forEach(input => {
         [locationField, addressField].forEach(el => {
             if (!el) return;
             el.style.transition = "background-color 0.3s";
-            el.style.backgroundColor = "rgba(124, 92, 255, 0.15)";
+            el.style.backgroundColor = "rgba(var(--accent-rgb), 0.18)";
             setTimeout(() => { el.style.backgroundColor = ""; }, 900);
         });
 
@@ -665,13 +807,13 @@ document.querySelectorAll(".file-input").forEach(input => {
 
                 dropdown.innerHTML = currentResults.map((r, i) => `
                     <div class="geo-suggestion" data-index="${i}"
-                         style="padding:10px 14px; cursor:pointer; font-size:0.9rem; color:#e4e4ec;">
+                         style="padding:10px 14px; cursor:pointer; font-size:0.9rem; color:var(--text);">
                         <i class="fas fa-location-dot" style="margin-right:8px; opacity:0.6;"></i>${r.formatted}
                     </div>
                 `).join("");
                 dropdown.style.display = "block";
                 dropdown.querySelectorAll(".geo-suggestion").forEach(el => {
-                    el.addEventListener("mouseenter", () => el.style.background = "rgba(255,255,255,0.06)");
+                    el.addEventListener("mouseenter", () => el.style.background = "rgba(var(--accent-rgb), 0.1)");
                     el.addEventListener("mouseleave", () => el.style.background = "transparent");
                 });
             } catch (err) {

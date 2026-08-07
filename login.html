@@ -2,177 +2,421 @@
 <html lang="en">
 
 <head>
-    <script>
-        // Cloudflare Turnstile loads async and calls this the instant it's ready,
-        // which can race ahead of /js/login.js (loaded at the bottom of body).
-        // This stub guarantees the callback exists, then hands off to the real
-        // renderTurnstile() once login.js has defined it.
-        window.onloadTurnstileCallback = function () {
-            window.__turnstileReady = true;
-            if (typeof window.renderTurnstile === "function") window.renderTurnstile();
-        };
-    </script>
-    <script src="https://challenges.cloudflare.com/turnstile/v0/api.js?onload=onloadTurnstileCallback&render=explicit" async defer></script>
+
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>UniThrift | Login</title>
-    
+
+    <title>UniThrift | Student Marketplace</title>
+
     <link rel="stylesheet" href="/css/login.css">
+
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
+
+    <link href="https://fonts.googleapis.com/css2?family=Anton&family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap"
+          rel="stylesheet">
+
+    <link rel="stylesheet"
+          href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
+
+    <script src="https://challenges.cloudflare.com/turnstile/v0/api.js?onload=onloadTurnstileCallback&render=explicit"
+            async
+            defer></script>
+
 </head>
 
 <body>
-<div class="container">
-    <div class="left-panel">
-        <div class="overlay"></div>
-        <div class="hero-content">
-            <h1 class="logo">UniThrift</h1>
-            <h2 class="typing-text">
-                <span id="animated-text"></span>
-            </h2>
-            <ul>
-                <li><i class="fa-solid fa-book-open list-icon"></i> Buy quality used textbooks at student-friendly prices</li>
-                <li><i class="fa-solid fa-laptop list-icon"></i> Find electronics, gadgets and accessories</li>
-                <li><i class="fa-solid fa-bed-front list-icon"></i> Furnish your hostel room without overspending</li>
-                <li><i class="fa-solid fa-seedling list-icon"></i> Give unused items a second life</li>
-            </ul>
-        </div>
-    </div>
 
-    <div class="right-panel">
-        <div class="form-box">
-            <div class="form-header">
-                <span class="badge">VERIFIED CAMPUS MARKETPLACE</span>
-                <h2 id="formTitle">Welcome Back</h2>
-                <p>Continue buying and selling within your trusted student community.</p>
-            </div>
+<div class="page">
 
-            <div class="form-body">
-                <form id="loginForm">
-                    <div class="input-group">
-                        <label>Email Address</label>
-                        <i class="fa-solid fa-envelope input-icon"></i>
-                        <input type="text" id="loginIdentifier" placeholder="Enter your email" autocomplete="username" required>
-                    </div>
+    <!-- ===================================
+                LEFT PANEL — THE BOARD
+    ==================================== -->
 
-                    <div class="input-group">
-                        <label>Password</label>
-                        <i class="fa-solid fa-lock input-icon"></i>
-                        <input type="password" id="loginPassword" placeholder="Enter your password" autocomplete="current-password" required>
-                        <button type="button" class="toggle-pw" id="toggleLoginPw" tabindex="-1">
-                            <i class="fa-regular fa-eye"></i>
-                        </button>
-                    </div>
+    <section class="left-section">
 
-                    <div class="forgot-password">
-                        <a href="#">Forgot Password?</a>
-                    </div>
+        <div class="board-texture"></div>
+        <div class="board-tape board-tape-tl"></div>
+        <div class="board-tape board-tape-br"></div>
 
-                    <p id="loginError" class="form-error" style="display:none;"></p>
-                    
-                    <button type="submit" class="submit-btn" id="loginSubmitBtn">
-                        Continue <i class="fa-solid fa-arrow-right"></i>
-                    </button>
-                </form>
-                
-                <form id="signupForm" style="display:none;">
-                    <div class="input-group">
-                        <label>Username</label>
-                        <i class="fa-solid fa-user input-icon"></i>
-                        <input type="text" id="signupUsername" placeholder="Choose a username" autocomplete="username" required>
-                    </div>
+        <div class="hero">
 
-                    <div class="input-group">
-                        <label>Email Address</label>
-                        <i class="fa-solid fa-envelope input-icon"></i>
-                        <input type="email" id="signupEmail" placeholder="Enter your email" autocomplete="email" required>
-                    </div>
+            <div class="brand-row">
 
-                    <div class="input-group">
-                        <label>Password</label>
-                        <i class="fa-solid fa-lock input-icon"></i>
-                        <input type="password" id="signupPassword" placeholder="Create a password" autocomplete="new-password" required>
-                        <button type="button" class="toggle-pw" id="toggleSignupPw" tabindex="-1">
-                            <i class="fa-regular fa-eye"></i>
-                        </button>
-                    </div>
+                <img src="/images/logo.png"
+                     class="brand-logo"
+                     alt="UniThrift Logo">
 
-                    <div class="input-group">
-                        <label>Confirm Password</label>
-                        <i class="fa-solid fa-shield-halved input-icon"></i>
-                        <input type="password" id="signupConfirm" placeholder="Confirm your password" autocomplete="new-password" required>
-                    </div>
+                <div class="brand-copy">
 
-                    <p id="signupError" class="form-error" style="display:none;"></p>
-                    
-                    <button type="submit" class="submit-btn" id="signupSubmitBtn">
-                        Create Account <i class="fa-solid fa-user-plus"></i>
-                    </button>
-                </form>
+                    <h1>UniThrift</h1>
 
-                <form id="otpForm" style="display:none;">
-                    <div class="otp-intro">
-                        <i class="fa-solid fa-envelope-circle-check otp-icon"></i>
-                        <p>Enter the 6-digit code we sent to<br><strong id="otpEmailDisplay"></strong></p>
-                    </div>
-
-                    <div class="otp-box-group" id="otpBoxGroup">
-                        <input type="text" inputmode="numeric" pattern="[0-9]*" maxlength="1" class="otp-box" data-index="0" autocomplete="one-time-code">
-                        <input type="text" inputmode="numeric" pattern="[0-9]*" maxlength="1" class="otp-box" data-index="1">
-                        <input type="text" inputmode="numeric" pattern="[0-9]*" maxlength="1" class="otp-box" data-index="2">
-                        <input type="text" inputmode="numeric" pattern="[0-9]*" maxlength="1" class="otp-box" data-index="3">
-                        <input type="text" inputmode="numeric" pattern="[0-9]*" maxlength="1" class="otp-box" data-index="4">
-                        <input type="text" inputmode="numeric" pattern="[0-9]*" maxlength="1" class="otp-box" data-index="5">
-                    </div>
-
-                    <p id="otpError" class="form-error" style="display:none;"></p>
-
-                    <button type="submit" class="submit-btn" id="otpSubmitBtn">
-                        Verify Email <i class="fa-solid fa-check"></i>
-                    </button>
-
-                    <p class="otp-resend-row">
-                        <span id="otpResendIdle">
-                            Didn't get a code? <a href="#" id="otpResendBtn">Resend code</a>
-                        </span>
-                        <span id="otpResendTimer" style="display:none;"></span>
+                    <p class="typing-line">
+                        <span class="typing-lead">NOW SHOWING:</span>
+                        <span id="animated-text"></span><span class="typing-cursor" aria-hidden="true"></span>
                     </p>
 
-                    <p class="toggle-text">
-                        <a href="#" id="otpBackBtn"><i class="fa-solid fa-arrow-left"></i> Back to login</a>
-                    </p>
-                </form>
-
-                <p id="statusMsg" style="display:none;"></p>
-
-                <div class="divider" id="socialDivider">
-                    <span>Continue with</span>
                 </div>
 
-                <button type="button" id="googleLoginBtn" class="google-btn">
-                    <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google">
-                    Continue with Google
-                </button>
+            </div>
 
-                <p class="toggle-text" id="toggleTextRow">
-                    <span id="toggleText">Don't have an account?</span>
-                    <a href="#" id="toggleBtn">Sign Up</a>
+            <h2>
+
+                Buy smarter.
+                <span>Sell faster.</span>
+                Save together.
+
+            </h2>
+
+            <p class="hero-description">
+
+                UniThrift is a student-only marketplace where
+                you can buy and sell pre-owned items within
+                your college community — safely and conveniently.
+
+            </p>
+
+            <!-- ======================
+                    FEATURES — PINNED NOTES
+            ======================= -->
+
+            <div class="note-stack">
+
+                <div class="note-card note-1">
+                    <span class="note-tape"></span>
+                    <i class="fa-solid fa-user-check"></i>
+                    <div>
+                        <h4>Verified Student Accounts</h4>
+                        <p>Only verified students can access the marketplace.</p>
+                    </div>
+                </div>
+
+                <div class="note-card note-2">
+                    <span class="note-tape"></span>
+                    <i class="fa-solid fa-shield-halved"></i>
+                    <div>
+                        <h4>AI-assisted Listing Verification</h4>
+                        <p>Flags damaged or misleading listings before they reach buyers.</p>
+                    </div>
+                </div>
+
+                <div class="note-card note-3">
+                    <span class="note-tape"></span>
+                    <i class="fa-solid fa-lock"></i>
+                    <div>
+                        <h4>Secure Authentication</h4>
+                        <p>Log in safely with email or your Google account.</p>
+                    </div>
+                </div>
+
+                <div class="note-card note-4">
+                    <span class="note-tape"></span>
+                    <i class="fa-solid fa-recycle"></i>
+                    <div>
+                        <h4>Reduce Waste</h4>
+                        <p>Give unused items a second life instead of the bin.</p>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- ======================
+                POPULAR CATEGORIES — TAG RACK
+            ======================= -->
+
+            <div class="rack-section">
+
+                <h3><i class="fa-solid fa-tags"></i> Browse the Rack</h3>
+
+                <div class="tag-rack">
+
+                    <div class="tag-chip"><i class="fa-solid fa-book"></i><span>Books</span></div>
+                    <div class="tag-chip"><i class="fa-solid fa-laptop"></i><span>Electronics</span></div>
+                    <div class="tag-chip"><i class="fa-solid fa-chair"></i><span>Furniture</span></div>
+                    <div class="tag-chip"><i class="fa-solid fa-calculator"></i><span>Calculators</span></div>
+                    <div class="tag-chip"><i class="fa-solid fa-bag-shopping"></i><span>Hostel Kit</span></div>
+                    <div class="tag-chip"><i class="fa-solid fa-mobile-screen"></i><span>Accessories</span></div>
+
+                </div>
+
+            </div>
+
+            <!-- ======================
+                    MISSION — RECEIPT STRIP
+            ======================= -->
+
+            <div class="mission-receipt">
+
+                <i class="fa-solid fa-lightbulb"></i>
+
+                <p>
+                    Our mission is simple: make student life more
+                    affordable by connecting buyers and sellers within
+                    a trusted campus community.
                 </p>
 
-                <div class="card-footer">
-                    <p>Trusted by students across campus.</p>
-                    <small>
-                        By continuing, you agree to our <a href="#">Terms</a> & <a href="#">Privacy Policy</a>
-                    </small>
-                </div>
             </div>
+
+            <!-- ======================
+                    TRUST SECTION — INK STAMPS
+            ======================= -->
+
+            <div class="stamp-section">
+
+                <h3><i class="fa-solid fa-circle-check"></i> Why Students Choose UniThrift</h3>
+
+                <div class="stamp-row">
+
+                    <div class="ink-stamp">
+                        <i class="fa-solid fa-id-card"></i>
+                        <h4>Student Verified</h4>
+                        <p>Every account is checked to keep the marketplace safe.</p>
+                    </div>
+
+                    <div class="ink-stamp">
+                        <i class="fa-solid fa-bolt"></i>
+                        <h4>Fast Listings</h4>
+                        <p>Upload items in minutes with an easy selling flow.</p>
+                    </div>
+
+                    <div class="ink-stamp">
+                        <i class="fa-solid fa-robot"></i>
+                        <h4>AI Assisted</h4>
+                        <p>Helps catch damaged goods and suspicious listings.</p>
+                    </div>
+
+                </div>
+
+            </div>
+
         </div>
-    </div>
+
+    </section>
+
+    <!-- ===================================
+                RIGHT PANEL — THE TICKET
+    ==================================== -->
+
+    <section class="right-section">
+
+        <div class="ticket-card" id="loginCard">
+
+            <div class="ticket-notch ticket-notch-top"></div>
+            <div class="ticket-notch ticket-notch-bottom"></div>
+
+            <div class="ticket-body">
+
+                <div class="card-header">
+
+                    <span class="ink-badge">Welcome Back</span>
+
+                    <h2 id="formTitle">Sign in to UniThrift</h2>
+
+                    <p>Continue buying and selling within your trusted student marketplace.</p>
+
+                </div>
+
+                <div class="card-body">
+
+                    <!-- ======================
+                            LOGIN FORM
+                    ======================= -->
+
+                    <form id="loginForm">
+
+                        <div class="input-group">
+                            <label>Email Address</label>
+                            <div class="input-wrapper">
+                                <i class="fa-regular fa-envelope"></i>
+                                <input id="loginIdentifier" type="email" placeholder="Enter your email"
+                                       autocomplete="username" required>
+                            </div>
+                        </div>
+
+                        <div class="input-group">
+                            <label>Password</label>
+                            <div class="input-wrapper">
+                                <i class="fa-solid fa-lock"></i>
+                                <input id="loginPassword" type="password" placeholder="Enter your password"
+                                       autocomplete="current-password" required>
+                                <button type="button" class="password-toggle" id="toggleLoginPw"
+                                        aria-label="Show password">
+                                    <i class="fa-regular fa-eye"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="form-options">
+                            <label class="remember-me">
+                                <input type="checkbox">
+                                Remember Me
+                            </label>
+                            <a href="#">Forgot Password?</a>
+                        </div>
+
+                        <p id="loginError" class="error-text" aria-live="assertive"></p>
+
+                        <button id="loginSubmitBtn" class="primary-btn" type="submit">
+                            Continue
+                            <i class="fa-solid fa-arrow-right"></i>
+                        </button>
+
+                    </form>
+
+                    <!-- ======================
+                        SIGNUP FORM
+                    ======================= -->
+
+                    <form id="signupForm" style="display:none;">
+
+                        <div class="input-group">
+                            <label>Username</label>
+                            <div class="input-wrapper">
+                                <i class="fa-regular fa-user"></i>
+                                <input id="signupUsername" type="text" placeholder="Choose a username" required>
+                            </div>
+                        </div>
+
+                        <div class="input-group">
+                            <label>Email Address</label>
+                            <div class="input-wrapper">
+                                <i class="fa-regular fa-envelope"></i>
+                                <input id="signupEmail" type="email" placeholder="Enter your email" required>
+                            </div>
+                        </div>
+
+                        <div class="input-group">
+                            <label>Password</label>
+                            <div class="input-wrapper">
+                                <i class="fa-solid fa-lock"></i>
+                                <input id="signupPassword" type="password" placeholder="Create a password" required>
+                                <button type="button" class="password-toggle" id="toggleSignupPw"
+                                        aria-label="Show password">
+                                    <i class="fa-regular fa-eye"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="input-group">
+                            <label>Confirm Password</label>
+                            <div class="input-wrapper">
+                                <i class="fa-solid fa-shield-halved"></i>
+                                <input id="signupConfirm" type="password" placeholder="Confirm password" required>
+                            </div>
+                        </div>
+
+                        <p id="signupError" class="error-text form-error" aria-live="assertive"></p>
+
+                        <button id="signupSubmitBtn" class="primary-btn" type="submit">
+                            Create Account
+                            <i class="fa-solid fa-user-plus"></i>
+                        </button>
+
+                    </form>
+
+                    <!-- ======================
+                            OTP VERIFICATION
+                    ======================= -->
+
+                    <form id="otpForm" style="display:none;">
+
+                        <div class="otp-header">
+                            <div class="otp-icon"><i class="fa-solid fa-envelope-circle-check"></i></div>
+                            <h3>Verify your email</h3>
+                            <p>We've sent a verification code to <strong id="otpEmailDisplay"></strong></p>
+                        </div>
+
+                        <div class="otp-container" id="otpBoxGroup">
+                            <input type="text" maxlength="1" class="otp-box" data-index="0">
+                            <input type="text" maxlength="1" class="otp-box" data-index="1">
+                            <input type="text" maxlength="1" class="otp-box" data-index="2">
+                            <span class="otp-dash">&ndash;</span>
+                            <input type="text" maxlength="1" class="otp-box" data-index="3">
+                            <input type="text" maxlength="1" class="otp-box" data-index="4">
+                            <input type="text" maxlength="1" class="otp-box" data-index="5">
+                        </div>
+
+                        <p id="otpError" class="error-text" aria-live="assertive"></p>
+
+                        <button id="otpSubmitBtn" type="submit" class="primary-btn">
+                            Verify Email
+                            <i class="fa-solid fa-check"></i>
+                        </button>
+
+                        <div class="otp-footer">
+                            <span id="otpResendIdle">
+                                Didn't receive the code?
+                                <a href="#" id="otpResendBtn">Resend</a>
+                            </span>
+                            <span id="otpResendTimer" style="display:none;"></span>
+                        </div>
+
+                        <div class="back-login">
+                            <a href="#" id="otpBackBtn"><i class="fa-solid fa-arrow-left"></i> Back to Login</a>
+                        </div>
+
+                    </form>
+
+                    <p id="statusMsg" class="status-message" aria-live="polite"></p>
+
+                    <!-- ======================
+                            DIVIDER
+                    ======================= -->
+
+                    <div class="divider" id="socialDivider">
+                        <span>or continue with</span>
+                    </div>
+
+                    <!-- ======================
+                        GOOGLE LOGIN
+                    ======================= -->
+
+                    <button id="googleLoginBtn" class="google-btn">
+                        <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google Logo">
+                        Continue with Google
+                    </button>
+
+                    <!-- ======================
+                        TOGGLE LOGIN/SIGNUP
+                    ======================= -->
+
+                    <div class="switch-form" id="toggleTextRow">
+                        <span id="toggleText">Don't have an account?</span>
+                        <a href="#" id="toggleBtn">Sign Up</a>
+                    </div>
+
+                    <!-- ======================
+                            FOOTER
+                    ======================= -->
+
+                    <div class="login-footer">
+
+                        <div class="footer-features">
+                            <div><i class="fa-solid fa-lock"></i> Secure Login</div>
+                            <div><i class="fa-solid fa-user-check"></i> Verified Students</div>
+                            <div><i class="fa-solid fa-shield-halved"></i> Protected Accounts</div>
+                        </div>
+
+                        <p>
+                            By continuing, you agree to our
+                            <a href="#">Terms &amp; Conditions</a> and
+                            <a href="#">Privacy Policy</a>
+                        </p>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </section>
+
 </div>
 
 <script src="/js/login.js"></script>
+
 </body>
+
 </html>

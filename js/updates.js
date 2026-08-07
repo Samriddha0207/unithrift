@@ -1,6 +1,7 @@
 // =========================================================================
 // UPDATES.JS — Notifications page: list rendering, tabs, mark-read,
-// and realtime delivery (persisted DB inserts + instant broadcasts).
+// dismiss, date grouping, and realtime delivery (persisted DB inserts +
+// instant broadcasts), with toast pop-ups for new arrivals.
 // =========================================================================
 (async function () {
     const token = localStorage.getItem('unithrift_session_token');
@@ -23,10 +24,18 @@
     const list = document.getElementById('notifList');
     const unreadBadge = document.getElementById('unreadCount');
 
+    const toastContainer = document.getElementById('toastContainer');
+    const confirmModal = document.getElementById('confirmModal');
+    const confirmModalTitle = document.getElementById('confirmModalTitle');
+    const confirmModalMessage = document.getElementById('confirmModalMessage');
+    const confirmModalOk = document.getElementById('confirmModalOk');
+    const confirmModalCancel = document.getElementById('confirmModalCancel');
+
     const ICONS = {
         sale: 'fas fa-tag',
         message: 'fas fa-comment',
         offer: 'fas fa-hand-holding-dollar',
+        pickup: 'fas fa-calendar-check',
         system: 'fas fa-gear',
         info: 'fas fa-circle-info'
     };
@@ -47,6 +56,88 @@
         return div.innerHTML;
     }
 
+    // ======================================
+    // TOASTS
+    // ======================================
+    function showToast(message, type = 'info', duration = 4500, onClick = null) {
+        if (!toastContainer) return;
+        const icons = { success: 'fa-check', error: 'fa-xmark', warning: 'fa-exclamation', info: 'fa-info' };
+
+        const toast = document.createElement('div');
+        toast.className = `toast toast--${type}`;
+        toast.innerHTML = `
+            <span class="toast-icon"><i class="fas ${icons[type] || icons.info}"></i></span>
+            <span class="toast-message"></span>
+            <button class="toast-close" aria-label="Dismiss"><i class="fas fa-xmark"></i></button>
+        `;
+        toast.querySelector('.toast-message').textContent = message;
+
+        const remove = () => {
+            if (!toast.isConnected) return;
+            toast.classList.add('toast--leaving');
+            toast.addEventListener('animationend', () => toast.remove(), { once: true });
+        };
+
+        let timer = setTimeout(remove, duration);
+        toast.addEventListener('mouseenter', () => clearTimeout(timer));
+        toast.addEventListener('mouseleave', () => { timer = setTimeout(remove, 1200); });
+        toast.querySelector('.toast-close').addEventListener('click', (e) => { e.stopPropagation(); remove(); });
+
+        if (onClick) {
+            toast.addEventListener('click', () => { onClick(); remove(); });
+        }
+
+        toastContainer.appendChild(toast);
+    }
+
+    // ======================================
+    // CONFIRMATION MODAL
+    // ======================================
+    function showConfirm(message, title = 'Are you sure?') {
+        if (!confirmModal) return Promise.resolve(window.confirm(message));
+
+        return new Promise(resolve => {
+            confirmModalTitle.textContent = title;
+            confirmModalMessage.textContent = message;
+            confirmModal.classList.add('open');
+
+            const cleanup = (result) => {
+                confirmModal.classList.remove('open');
+                confirmModalOk.removeEventListener('click', onOk);
+                confirmModalCancel.removeEventListener('click', onCancel);
+                confirmModal.removeEventListener('click', onOverlay);
+                document.removeEventListener('keydown', onKeydown);
+                resolve(result);
+            };
+
+            const onOk = () => cleanup(true);
+            const onCancel = () => cleanup(false);
+            const onOverlay = (e) => { if (e.target === confirmModal) cleanup(false); };
+            const onKeydown = (e) => { if (e.key === 'Escape') cleanup(false); };
+
+            confirmModalOk.addEventListener('click', onOk);
+            confirmModalCancel.addEventListener('click', onCancel);
+            confirmModal.addEventListener('click', onOverlay);
+            document.addEventListener('keydown', onKeydown);
+        });
+    }
+
+    // ======================================
+    // DATE GROUPING
+    // ======================================
+    function groupLabelFor(dateStr) {
+        const d = new Date(dateStr);
+        const now = new Date();
+        const startOfDay = (date) => new Date(date.getFullYear(), date.getMonth(), date.getDate());
+
+        const dayDiff = Math.round((startOfDay(now) - startOfDay(d)) / 86400000);
+
+        if (dayDiff <= 0) return 'Today';
+        if (dayDiff === 1) return 'Yesterday';
+        if (dayDiff < 7) return 'Earlier this week';
+        return 'Earlier';
+    }
+
     function renderCard(n) {
         const type = n.type || 'info';
         const icon = ICONS[type] || ICONS.info;
@@ -58,6 +149,9 @@
                 <span class="notif-time">${timeAgo(n.created_at)}</span>
             </div>
             ${!n.read ? '<div class="notif-unread-dot"></div>' : ''}
+            <button class="notif-dismiss-btn" data-id="${n.id}" aria-label="Dismiss notification" title="Dismiss">
+                <i class="fas fa-xmark"></i>
+            </button>
         </div>`;
     }
 
@@ -73,7 +167,24 @@
             </div>`;
             return;
         }
-        list.innerHTML = filtered.map(renderCard).join('');
+
+        // Group into Today / Yesterday / Earlier this week / Earlier, in that
+        // order, without reordering notifications within each group (they
+        // already arrive newest-first from the API / realtime inserts).
+        const groups = new Map();
+        filtered.forEach(n => {
+            const label = groupLabelFor(n.created_at);
+            if (!groups.has(label)) groups.set(label, []);
+            groups.get(label).push(n);
+        });
+
+        const order = ['Today', 'Yesterday', 'Earlier this week', 'Earlier'];
+        list.innerHTML = order
+            .filter(label => groups.has(label))
+            .map(label => `
+                <div class="notif-group-label">${label}</div>
+                ${groups.get(label).map(renderCard).join('')}
+            `).join('');
 
         list.querySelectorAll('.notif-card').forEach(card => {
             card.addEventListener('click', async () => {
@@ -93,11 +204,32 @@
                     updateBadge();
                 }
 
-                // For messages, reference_id is the chat room id (set server-side
-                // in createNotification and in the live broadcast payload below) —
-                // NOT the sender's user id — so this always lands on the right room.
-                if (type === 'message' && ref) window.location.href = `/chat?room=${ref}`;
-                else if ((type === 'sale' || type === 'offer') && ref) window.location.href = `/product?id=${ref}`;
+                // For messages — and for offers/pickup proposals, which are
+                // also sent as chat messages — reference_id is the chat room id
+                // (set server-side in createNotification and in the live
+                // broadcast payload below), NOT the sender's user id or a
+                // product id, so this always lands on the right room.
+                if ((type === 'message' || type === 'offer' || type === 'pickup') && ref) window.location.href = `/chat?room=${ref}`;
+                else if (type === 'sale' && ref) window.location.href = `/product?id=${ref}`;
+            });
+        });
+
+        list.querySelectorAll('.notif-dismiss-btn').forEach(btn => {
+            btn.addEventListener('click', async (e) => {
+                e.stopPropagation();
+                const id = btn.getAttribute('data-id');
+
+                const ok = await showConfirm('Remove this notification? This cannot be undone.', 'Dismiss notification?');
+                if (!ok) return;
+
+                try {
+                    await authFetch(`/api/notifications/${id}`, { method: 'DELETE' });
+                    allNotifications = allNotifications.filter(n => n.id !== id);
+                    renderList();
+                    updateBadge();
+                } catch (err) {
+                    showToast('Could not dismiss that notification. Please try again.', 'error');
+                }
             });
         });
     }
@@ -157,6 +289,19 @@
     const initialLoad = await loadNotifications();
     if (!initialLoad.ok) return;
 
+    // Pops a toast for a newly-arrived realtime notification, routing the
+    // click the same way the card itself would.
+    function announceIncoming(n) {
+        const type = n.type || 'info';
+        showToast(n.message, 'info', 6000, () => {
+            if ((type === 'message' || type === 'offer' || type === 'pickup') && n.reference_id) {
+                window.location.href = `/chat?room=${n.reference_id}`;
+            } else if (type === 'sale' && n.reference_id) {
+                window.location.href = `/product?id=${n.reference_id}`;
+            }
+        });
+    }
+
     // ---- Realtime wiring ----
     // Two complementary channels:
     // 1. postgres_changes on `notifications` — catches every persisted
@@ -212,22 +357,25 @@
             allNotifications.unshift(payload.new);
             renderList();
             updateBadge();
+            announceIncoming(payload.new);
         })
         .subscribe();
 
     sb.channel(`notifications:${userId}`)
         .on('broadcast', { event: 'new_msg_alert' }, (payload) => {
             const { msg, senderName, roomId } = payload.payload || {};
-            allNotifications.unshift({
+            const n = {
                 id: `live-${Date.now()}`,
                 type: 'message',
                 message: `New message from ${senderName || 'a student'}: "${msg || ''}"`,
                 read: false,
                 reference_id: roomId || '',
                 created_at: new Date().toISOString()
-            });
+            };
+            allNotifications.unshift(n);
             renderList();
             updateBadge();
+            announceIncoming(n);
         })
         .subscribe();
 })();

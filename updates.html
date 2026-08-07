@@ -4,130 +4,141 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>UniThrift | Updates</title>
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <style>
         /* GLOBAL & RESET */
-        *, *::before, *::after { 
-            margin: 0; 
-            padding: 0; 
-            box-sizing: border-box; 
+        *, *::before, *::after {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
             -webkit-font-smoothing: antialiased;
             -moz-osx-font-smoothing: grayscale;
+            font-family: 'Inter', sans-serif;
+        }
+
+        h1, h2, h3,
+        .logo, .unread-badge {
+            font-family: 'Baloo 2', 'Inter', sans-serif;
         }
 
         /* =========================================
-           THEMES (Matched to Marketplace)
+           THEMES — "Night Market" (dark) / "Paper Market" (light)
+           Same campus thrift-stall palette used across the whole site.
         ========================================= */
         body.dark-theme {
-            --bg: #050505;               /* True pure black canvas */
-            --card: #121214;             /* Slate-tinted ultra-dark charcoal */
-            --card-hover: #1a1a1e;       /* Crisper elevation state */
-            --text: #f3f4f6;             /* Clean premium off-white */
-            --secondary: #8e939e;        /* Balanced muted text */
-            --accent: #6366f1;           /* Vibrant Indigo */
-            --accent-hover: #4f46e5;
-            --navbar: rgba(5, 5, 5, 0.85); /* Frosty pure black sticky nav */
-            --border: rgba(255, 255, 255, 0.07); /* Razor-thin premium border */
-            --shadow: rgba(0, 0, 0, 0.6);
+            --bg: #14130f;
+            --card: #1e1c15;
+            --card-hover: #27241a;
+            --text: #f6efe0;
+            --secondary: #a39c88;
+            --accent: #e8a33d;
+            --accent-hover: #cf8c28;
+            --accent-soft: #f4c567;
+            --accent-rgb: 232, 163, 61;
+            --navbar: rgba(20, 19, 15, 0.85);
+            --border: rgba(246, 239, 224, 0.08);
+            --shadow: rgba(0, 0, 0, 0.55);
+            --ring: rgba(232, 163, 61, 0.35);
 
-            /* High visibility Notification Category Colors */
-            --sale: #10b981; 
-            --message: #6366f1; 
-            --offer: #f59e0b;
-            --system: #22d3ee; 
-            --info: #94a3b8;
+            /* Notification category colors — each distinct from the brand
+               accent (used by "offer") so categories stay tellable apart */
+            --sale: #4bab7c;
+            --message: #c2622d;
+            --offer: #e8a33d;
+            --pickup: #3fb6c9;
+            --system: #6b8fc7;
+            --info: #a39c88;
         }
 
         body.light-theme {
-            --bg: #f8f5ff;                       /* Soft lavender tint canvas */
-            --card: rgba(255, 255, 255, 0.42);   /* Glassmorphism translucent card */
-            --card-hover: rgba(255, 255, 255, 0.75); /* Elevated glass state */
-            --text: #2f2545;                     /* Deep purple charcoal text */
-            --secondary: #6d6486;                /* Muted lavender purple */
-            --accent: #8b5cf6;                   /* Primary purple */
-            --accent-hover: #7c3aed;             
-            --navbar: rgba(255, 255, 255, 0.45); /* Soft frosty lavender glass navigation */
-            --border: rgba(170, 150, 255, 0.25); /* Gentle amethyst line boundary */
-            --shadow: rgba(88, 62, 175, 0.12);   
+            --bg: #f3ead4;
+            --card: #fffdf8;
+            --card-hover: #fffaf0;
+            --text: #2c2013;
+            --secondary: #7c7156;
+            --accent: #d98a26;
+            --accent-hover: #b87418;
+            --accent-soft: #f0b563;
+            --accent-rgb: 217, 138, 38;
+            --navbar: rgba(243, 234, 212, 0.75);
+            --border: rgba(44, 32, 19, 0.14);
+            --shadow: rgba(80, 56, 20, 0.14);
+            --ring: rgba(217, 138, 38, 0.28);
 
-            /* High visibility Notification Category Colors (Light) */
-            --sale: #059669; 
-            --message: #7c3aed; 
-            --offer: #d97706;
-            --system: #0891b2; 
-            --info: #4b5563;
+            /* Notification category colors (light) */
+            --sale: #2f8f5b;
+            --message: #b0561f;
+            --offer: #d98a26;
+            --pickup: #14808f;
+            --system: #4c6ea8;
+            --info: #7c7156;
         }
 
-        body { 
-            background: var(--bg); 
-            color: var(--text); 
-            min-height: 100vh; 
-            font-family: 'Poppins', sans-serif; 
+        body {
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
             transition: background-color 0.3s ease, color 0.3s ease;
         }
 
-        /* GLASSMORPHISM ENHANCEMENTS FOR LIGHT THEME */
-        body.light-theme .navbar,
-        body.light-theme .notif-card,
-        body.light-theme .skeleton {
-            backdrop-filter: blur(28px);
-            -webkit-backdrop-filter: blur(28px);
-            box-shadow: 0 20px 50px var(--shadow), inset 0 1px 0 rgba(255, 255, 255, 0.65);
+        body.light-theme {
+            background-image: radial-gradient(rgba(44, 32, 19, 0.05) 1px, transparent 1px);
+            background-size: 18px 18px;
         }
 
         /* =========================================
-           NAVBAR (Matched to Marketplace)
+           NAVBAR
         ========================================= */
         .navbar {
-            position: sticky; 
-            top: 0; 
+            position: sticky;
+            top: 0;
             z-index: 1000;
-            display: flex; 
-            align-items: center; 
-            justify-content: flex-start; 
-            padding: 16px 5%; 
+            display: flex;
+            align-items: center;
+            justify-content: flex-start;
+            padding: 16px 5%;
             height: 70px;
-            background: var(--navbar); 
+            background: var(--navbar);
             border-bottom: 1px solid var(--border);
             backdrop-filter: blur(16px);
             -webkit-backdrop-filter: blur(16px);
-            gap: 40px; 
-        }
-        
-        .logo { 
-            display: flex; 
-            align-items: center; 
-            gap: 10px; 
-            font-size: 1.4rem; 
-            font-weight: 700; 
-            letter-spacing: -0.5px;
-            color: var(--text); 
-            text-decoration: none; 
-            flex-shrink: 0;
-        }
-        
-        .logo-mark { 
-            width: 34px; 
-            height: 34px; 
-            border-radius: 10px; 
-            background: linear-gradient(135deg, var(--accent), #a78bfa); 
-            display: flex; 
-            align-items: center; 
-            justify-content: center; 
-            color: white; 
-            font-size: 0.9rem; 
-            box-shadow: 0 4px 12px rgba(139, 92, 246, 0.35);
+            gap: 40px;
         }
 
-        .nav-center { 
-            display: flex; 
+        .logo {
+            display: flex;
             align-items: center;
-            gap: 24px; 
+            gap: 10px;
+            font-size: 1.4rem;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+            color: var(--text);
+            text-decoration: none;
+            flex-shrink: 0;
+        }
+
+        .logo-mark {
+            width: 34px;
+            height: 34px;
+            border-radius: 10px;
+            background: linear-gradient(135deg, var(--accent), var(--accent-soft));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 0.9rem;
+            box-shadow: 0 4px 12px rgba(var(--accent-rgb), 0.35);
+        }
+
+        .nav-center {
+            display: flex;
+            align-items: center;
+            gap: 24px;
         }
         .nav-center a { text-decoration: none; color: var(--secondary); font-size: 0.95rem; font-weight: 500; transition: color 0.2s; }
-        .nav-center a:hover, .nav-center a.active { color: var(--text); }
-        
+        .nav-center a:hover, .nav-center a.active { color: var(--accent); }
+
         .theme-inline-toggle {
             background: none;
             border: none;
@@ -143,7 +154,7 @@
         }
         .theme-inline-toggle:hover {
             color: var(--text);
-            background-color: var(--border);
+            background-color: rgba(var(--accent-rgb), 0.12);
         }
 
         body.dark-theme .theme-inline-toggle .fa-sun { display: block; }
@@ -151,13 +162,13 @@
         body.light-theme .theme-inline-toggle .fa-sun { display: none; }
         body.light-theme .theme-inline-toggle .fa-moon { display: block; }
 
-        .nav-right { 
-            display: flex; 
-            align-items: center; 
-            gap: 14px; 
-            margin-left: auto; 
+        .nav-right {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            margin-left: auto;
         }
-        
+
         .icon-btn {
             width: 44px;
             height: 44px;
@@ -187,29 +198,37 @@
         ========================================= */
         .page-wrap { max-width: 800px; margin: 50px auto; padding: 0 4%; }
 
-        .page-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 35px; }
+        .page-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 35px; flex-wrap: wrap; gap: 14px; }
         .page-header h1 { font-size: 1.8rem; font-weight: 700; display: flex; align-items: center; gap: 12px; letter-spacing: -0.5px; }
         .page-header h1 i { color: var(--accent); }
 
-        .btn { display: inline-flex; align-items: center; gap: 8px; padding: 12px 22px; border-radius: 12px; font-size: 0.88rem; font-weight: 600; cursor: pointer; border: none; transition: all 0.25s ease; }
+        .btn { display: inline-flex; align-items: center; gap: 8px; padding: 12px 22px; border-radius: 12px; font-size: 0.88rem; font-weight: 600; cursor: pointer; border: none; transition: all 0.25s ease; font-family: 'Inter', sans-serif; }
         .btn-outline { background: var(--card); border: 1px solid var(--border); color: var(--text); }
         .btn-outline:hover { background: var(--card-hover); border-color: var(--accent); color: var(--accent); transform: translateY(-2px); }
 
         .unread-badge {
             background: var(--accent); color: white; font-size: 0.75rem; font-weight: 700;
             padding: 3px 9px; border-radius: 12px; min-width: 24px; text-align: center;
-            box-shadow: 0 4px 10px rgba(99, 102, 241, 0.4);
+            box-shadow: 0 4px 10px rgba(var(--accent-rgb), 0.4);
         }
 
         /* FILTER TABS */
-        .filter-tabs { display: flex; gap: 10px; margin-bottom: 30px; flex-wrap: wrap; }
+        .filter-tabs { display: flex; gap: 8px; margin-bottom: 30px; flex-wrap: wrap; }
         .tab-btn {
-            padding: 8px 18px; border-radius: 25px; font-size: 0.85rem; font-weight: 500;
+            display: inline-flex; align-items: center; gap: 6px;
+            padding: 8px 16px; border-radius: 20px; font-size: 0.82rem; font-weight: 600;
             border: 1px solid var(--border); background: var(--card); color: var(--secondary);
-            cursor: pointer; transition: all 0.2s ease;
+            cursor: pointer; transition: all 0.2s ease; font-family: 'Inter', sans-serif;
         }
-        .tab-btn.active { background: var(--accent); border-color: var(--accent); color: white; box-shadow: 0 4px 12px rgba(139, 92, 246, 0.35); }
+        .tab-btn.active { background: var(--accent); border-color: var(--accent); color: white; box-shadow: 0 4px 12px rgba(var(--accent-rgb), 0.35); }
         .tab-btn:hover:not(.active) { border-color: var(--accent); color: var(--text); background: var(--card-hover); }
+
+        /* DATE GROUP HEADERS */
+        .notif-group-label {
+            font-size: 0.78rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.6px;
+            color: var(--secondary); margin: 26px 0 12px 4px;
+        }
+        .notif-group-label:first-child { margin-top: 0; }
 
         /* NOTIFICATION LIST COMPONENTS */
         #notifList { display: flex; flex-direction: column; gap: 14px; }
@@ -224,6 +243,7 @@
         }
         .notif-card.unread { border-left: 4px solid var(--accent); }
         .notif-card:hover { border-color: var(--accent); background: var(--card-hover); transform: translateY(-2px); }
+        .notif-card:hover .notif-dismiss-btn { opacity: 1; }
         .notif-card.read { opacity: 0.65; }
 
         .notif-icon {
@@ -233,27 +253,48 @@
         }
         body.light-theme .notif-icon { border: 1px solid rgba(0, 0, 0, 0.05); }
 
-        .notif-icon.sale    { background: rgba(16, 185, 129, 0.15); color: var(--sale); }
-        .notif-icon.message { background: rgba(99, 102, 241, 0.15); color: var(--message); }
-        .notif-icon.offer   { background: rgba(245, 158, 11, 0.15); color: var(--offer); }
-        .notif-icon.system  { background: rgba(34, 211, 238, 0.15); color: var(--system); }
-        .notif-icon.info    { background: rgba(148, 163, 184, 0.15); color: var(--info); }
+        .notif-icon.sale    { background: rgba(75, 171, 124, 0.15); color: var(--sale); }
+        .notif-icon.message { background: rgba(194, 98, 45, 0.15); color: var(--message); }
+        .notif-icon.offer   { background: rgba(var(--accent-rgb), 0.15); color: var(--offer); }
+        .notif-icon.pickup  { background: rgba(63, 182, 201, 0.15); color: var(--pickup); }
+        .notif-icon.system  { background: rgba(107, 143, 199, 0.15); color: var(--system); }
+        .notif-icon.info    { background: rgba(163, 156, 136, 0.15); color: var(--info); }
 
-        .notif-body { flex: 1; padding-top: 2px; }
+        .notif-body { flex: 1; padding-top: 2px; min-width: 0; }
         .notif-body p { font-size: 0.95rem; line-height: 1.5; color: var(--text); }
         .notif-body .notif-time { font-size: 0.8rem; color: var(--secondary); margin-top: 6px; display: block; }
 
         .notif-unread-dot {
             width: 10px; height: 10px; border-radius: 50%;
             background: var(--accent); flex: none; margin-top: 8px;
-            box-shadow: 0 0 10px var(--accent);
+            box-shadow: 0 0 10px rgba(var(--accent-rgb), 0.6);
         }
+
+        .notif-dismiss-btn {
+            position: absolute;
+            top: 14px;
+            right: 14px;
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            border: none;
+            background: var(--bg);
+            color: var(--secondary);
+            font-size: 0.75rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            transition: all 0.2s ease;
+        }
+        .notif-dismiss-btn:hover { background: rgba(244, 63, 94, 0.15); color: #f43f5e; }
 
         /* EMPTY STATE */
         .empty-state {
             text-align: center; padding: 80px 20px; color: var(--secondary);
         }
-        .empty-state i { font-size: 3rem; display: block; margin-bottom: 18px; opacity: 0.35; color: var(--secondary); }
+        .empty-state i { font-size: 3rem; display: block; margin-bottom: 18px; opacity: 0.4; color: var(--accent); }
         .empty-state p { font-size: 0.95rem; }
 
         /* SKELETON PLACEHOLDERS */
@@ -269,11 +310,81 @@
         .skel-line.short { width: 40%; }
         @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.45; } }
 
+        /* =========================================
+           TOASTS
+        ========================================= */
+        .toast-container {
+            position: fixed; bottom: 24px; right: 24px; z-index: 6000;
+            display: flex; flex-direction: column; gap: 10px;
+            max-width: 360px; width: calc(100% - 40px); pointer-events: none;
+        }
+        .toast {
+            pointer-events: auto; display: flex; align-items: flex-start; gap: 12px;
+            padding: 14px 16px; border-radius: 14px; background: var(--card);
+            border: 1px solid var(--border); box-shadow: 0 12px 30px var(--shadow);
+            color: var(--text); font-size: 0.88rem; font-weight: 500;
+            animation: toastIn 0.3s cubic-bezier(0.16, 1, 0.3, 1); cursor: pointer;
+        }
+        .toast.toast--leaving { animation: toastOut 0.22s ease forwards; }
+        .toast-icon {
+            flex: none; width: 22px; height: 22px; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 0.65rem; color: white; margin-top: 1px;
+        }
+        .toast--success .toast-icon { background: #4bab7c; }
+        .toast--error .toast-icon { background: #f43f5e; }
+        .toast--warning .toast-icon { background: #c2622d; }
+        .toast--info .toast-icon { background: var(--accent); }
+        .toast-message { flex: 1; line-height: 1.4; word-break: break-word; }
+        .toast-close {
+            flex: none; background: none; border: none; cursor: pointer;
+            color: var(--secondary); font-size: 0.75rem; padding: 2px; margin-top: 2px;
+        }
+        .toast-close:hover { color: var(--text); }
+        @keyframes toastIn { from { opacity: 0; transform: translateY(12px) scale(0.97); } to { opacity: 1; transform: translateY(0) scale(1); } }
+        @keyframes toastOut { from { opacity: 1; transform: translateY(0) scale(1); } to { opacity: 0; transform: translateY(8px) scale(0.97); } }
+
+        /* =========================================
+           CONFIRMATION MODAL
+        ========================================= */
+        .confirm-modal-overlay {
+            position: fixed; inset: 0; display: flex; justify-content: center; align-items: center;
+            background: rgba(10, 9, 6, 0.65); backdrop-filter: blur(8px); z-index: 6500;
+            opacity: 0; visibility: hidden; pointer-events: none;
+            transition: opacity 0.2s ease, visibility 0.2s ease;
+        }
+        .confirm-modal-overlay.open { opacity: 1; visibility: visible; pointer-events: auto; }
+        .confirm-modal-box {
+            width: 380px; max-width: 90%; background: var(--card); border: 1px solid var(--border);
+            border-radius: 20px; padding: 28px; text-align: center;
+            box-shadow: 0 20px 50px -10px rgba(0, 0, 0, 0.6);
+            transform: scale(0.95) translateY(10px); transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .confirm-modal-overlay.open .confirm-modal-box { transform: scale(1) translateY(0); }
+        .confirm-modal-icon {
+            width: 52px; height: 52px; margin: 0 auto 16px auto; border-radius: 50%;
+            background: rgba(244, 63, 94, 0.12); color: #f43f5e;
+            display: flex; align-items: center; justify-content: center; font-size: 1.3rem;
+        }
+        .confirm-modal-box h3 { font-size: 1.15rem; margin-bottom: 8px; }
+        .confirm-modal-box p { color: var(--secondary); font-size: 0.9rem; margin-bottom: 24px; line-height: 1.5; }
+        .confirm-modal-actions { display: flex; gap: 12px; }
+        .confirm-btn { flex: 1; padding: 12px; border-radius: 10px; border: none; cursor: pointer; font-weight: 600; font-size: 0.9rem; transition: all 0.2s ease; font-family: 'Inter', sans-serif; }
+        .confirm-btn--ghost { background: var(--bg); color: var(--text); border: 1px solid var(--border); }
+        .confirm-btn--ghost:hover { background: var(--card-hover); }
+        .confirm-btn--danger { background: #f43f5e; color: white; }
+        .confirm-btn--danger:hover { filter: brightness(0.92); }
+
         @media(max-width: 768px) {
             .navbar { padding: 0 4%; gap: 15px; }
             .nav-center { display: none; }
             .page-wrap { margin: 30px auto; }
             .page-header h1 { font-size: 1.5rem; }
+        }
+        @media(max-width: 480px) {
+            .toast-container { left: 12px; right: 12px; bottom: 16px; max-width: none; width: auto; }
+            .confirm-modal-box { padding: 22px; }
+            .confirm-modal-actions { flex-direction: column-reverse; }
         }
     </style>
 </head>
@@ -322,8 +433,9 @@
     <div class="filter-tabs">
         <button class="tab-btn active" data-filter="all">All</button>
         <button class="tab-btn" data-filter="message"><i class="fas fa-comment"></i> Messages</button>
-        <button class="tab-btn" data-filter="sale"><i class="fas fa-tag"></i> Sales</button>
         <button class="tab-btn" data-filter="offer"><i class="fas fa-hand-holding-dollar"></i> Offers</button>
+        <button class="tab-btn" data-filter="pickup"><i class="fas fa-calendar-check"></i> Pickups</button>
+        <button class="tab-btn" data-filter="sale"><i class="fas fa-tag"></i> Sales</button>
         <button class="tab-btn" data-filter="system"><i class="fas fa-gear"></i> System</button>
     </div>
 
@@ -333,6 +445,20 @@
         <div class="skeleton"><div class="skel-icon"></div><div class="skel-lines"><div class="skel-line"></div><div class="skel-line short"></div></div></div>
     </div>
 
+</div>
+
+<div id="toastContainer" class="toast-container" aria-live="polite" aria-atomic="true"></div>
+
+<div id="confirmModal" class="confirm-modal-overlay">
+    <div class="confirm-modal-box">
+        <div class="confirm-modal-icon"><i class="fas fa-triangle-exclamation"></i></div>
+        <h3 id="confirmModalTitle">Are you sure?</h3>
+        <p id="confirmModalMessage">This action cannot be undone.</p>
+        <div class="confirm-modal-actions">
+            <button id="confirmModalCancel" class="confirm-btn confirm-btn--ghost">Cancel</button>
+            <button id="confirmModalOk" class="confirm-btn confirm-btn--danger">Confirm</button>
+        </div>
+    </div>
 </div>
 
 <script src="/js/auth-fetch.js"></script>
